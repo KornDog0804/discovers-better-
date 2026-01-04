@@ -6,6 +6,7 @@ const els = {
   search: document.getElementById("search"),
   sort: document.getElementById("sort"),
   shuffle: document.getElementById("shuffle"),
+  viewMode: document.getElementById("viewMode"),
   clear: document.getElementById("clear"),
   statusText: document.getElementById("statusText"),
   countText: document.getElementById("countText"),
@@ -27,7 +28,7 @@ const els = {
 };
 
 const CACHE_PREFIX = "discovers_cache_v1_";
-const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
 
 const PAYPAL_EMAIL = "titans.rule1215@gmail.com";
 const DEFAULT_DRINK_USD = "5.00";
@@ -35,11 +36,19 @@ const DEFAULT_DRINK_USD = "5.00";
 let allItems = [];
 let viewItems = [];
 let observer = null;
+let collageOn = false;
+
+// -------------------- LOADING STATE (spin + tonearm) --------------------
+function setLoading(on) {
+  document.body.classList.toggle("is-loading", !!on);
+  if (els.go) els.go.disabled = !!on;
+}
 
 // -------------------- CACHE --------------------
 function cacheKey(username) {
   return `${CACHE_PREFIX}${username.toLowerCase()}`;
 }
+
 function readCache(username) {
   try {
     const raw = localStorage.getItem(cacheKey(username));
@@ -52,14 +61,18 @@ function readCache(username) {
     return null;
   }
 }
+
 function writeCache(username, items) {
   try {
     localStorage.setItem(cacheKey(username), JSON.stringify({ ts: Date.now(), items }));
   } catch {}
 }
+
 function clearAllCaches() {
   const keys = Object.keys(localStorage);
-  for (const k of keys) if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
+  for (const k of keys) {
+    if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
+  }
 }
 
 // -------------------- UI HELPERS --------------------
@@ -67,6 +80,7 @@ function setStatus(text, count = "") {
   if (els.statusText) els.statusText.textContent = text;
   if (els.countText) els.countText.textContent = count;
 }
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -81,6 +95,7 @@ function formatArtists(artistsArr) {
   if (!Array.isArray(artistsArr)) return "";
   return artistsArr.map((a) => a?.name).filter(Boolean).join(", ");
 }
+
 function formatFormats(formatsArr) {
   if (!Array.isArray(formatsArr)) return "";
   return formatsArr
@@ -91,10 +106,12 @@ function formatFormats(formatsArr) {
     })
     .join(" • ");
 }
+
 function normalizeItem(entry) {
   const bi = entry?.basic_information || {};
   const releaseId = bi?.id || null;
   const discogsUrl = releaseId ? `https://www.discogs.com/release/${releaseId}` : "";
+
   return {
     id: entry?.id ?? releaseId ?? (globalThis.crypto?.randomUUID?.() || String(Math.random())),
     releaseId,
@@ -129,6 +146,7 @@ async function discogsFetchCollectionPage(username, page, perPage) {
       throw new Error(`Server error ${res.status}. ${txt.slice(0, 160)}`);
     }
   }
+
   return JSON.parse(txt);
 }
 
@@ -174,6 +192,7 @@ function destroyObserver() {
   if (observer) observer.disconnect();
   observer = null;
 }
+
 function createObserver() {
   destroyObserver();
   observer = new IntersectionObserver(
@@ -210,15 +229,31 @@ function openModal(item) {
   els.modal.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
 }
+
 function closeModal() {
   els.modal.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
 }
 
 // -------------------- GRID --------------------
+function deterministicTilt(seedStr) {
+  // tiny stable pseudo-random tilt from string
+  let h = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) {
+    h ^= seedStr.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const r = (h >>> 0) % 7; // 0..6
+  const deg = (r - 3) * 0.35; // -1.05..+1.05
+  return deg.toFixed(2);
+}
+
 function renderGrid(items) {
   els.grid.innerHTML = "";
   createObserver();
+
+  // apply mode class
+  els.grid.classList.toggle("collage", collageOn);
 
   const frag = document.createDocumentFragment();
 
@@ -226,6 +261,13 @@ function renderGrid(items) {
     const tile = document.createElement("div");
     tile.className = "tile";
     tile.title = `${item.artist} — ${item.title}`;
+
+    // collage tilt
+    if (collageOn) {
+      tile.style.setProperty("--tilt", `${deterministicTilt(String(item.id))}deg`);
+    } else {
+      tile.style.removeProperty("--tilt");
+    }
 
     const img = document.createElement("img");
     img.dataset.src = item.cover || "";
@@ -297,11 +339,12 @@ function shuffleCurrent() {
   setStatus("Shuffled.", `${viewItems.length} shown`);
 }
 
-// -------------------- URL PARAMS (shareable) --------------------
+// -------------------- URL PARAMS --------------------
 function getUserFromUrl() {
   const u = new URL(location.href);
   return (u.searchParams.get("user") || "").trim();
 }
+
 function setUserInUrl(username) {
   const u = new URL(location.href);
   if (username) u.searchParams.set("user", username);
@@ -352,7 +395,7 @@ function paypalDonateUrl() {
   return u.toString();
 }
 
-// -------------------- 🍺 CHEERS FX (ONLY on click) --------------------
+// -------------------- 🍺 CHEERS FX --------------------
 function beerCheersFX() {
   const beer = document.getElementById("beer");
   const toast = document.getElementById("cheersToast");
@@ -367,7 +410,7 @@ function beerCheersFX() {
 
   if (toast) {
     toast.textContent = "Cheers 🍻";
-    toast.hidden = false;            // <-- key: never visible unless here
+    toast.hidden = false;
     toast.classList.add("show");
 
     setTimeout(() => {
@@ -380,26 +423,23 @@ function beerCheersFX() {
   }
 }
 
-// -------------------- 🎧 NEEDLE DROP SOUND (WebAudio) --------------------
+// -------------------- 🎧 NEEDLE DROP SOUND --------------------
 let audioCtx = null;
 
 function needleDropSound() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
-
     audioCtx = audioCtx || new Ctx();
 
     const now = audioCtx.currentTime;
 
-    // master
     const master = audioCtx.createGain();
     master.gain.setValueAtTime(0.0, now);
     master.gain.linearRampToValueAtTime(0.9, now + 0.01);
     master.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
     master.connect(audioCtx.destination);
 
-    // quick "thump" (needle drop impact)
     const thump = audioCtx.createOscillator();
     thump.type = "sine";
     thump.frequency.setValueAtTime(120, now);
@@ -415,7 +455,6 @@ function needleDropSound() {
     thump.start(now);
     thump.stop(now + 0.13);
 
-    // vinyl "static" burst
     const bufferSize = Math.floor(audioCtx.sampleRate * 0.22);
     const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -445,7 +484,6 @@ function needleDropSound() {
     noise.start(now);
     noise.stop(now + 0.23);
 
-    // tiny "motor" ramp (super subtle)
     const hum = audioCtx.createOscillator();
     hum.type = "sine";
     hum.frequency.setValueAtTime(40, now);
@@ -457,9 +495,7 @@ function needleDropSound() {
     humGain.connect(master);
     hum.start(now);
     hum.stop(now + 0.36);
-  } catch {
-    // no-op
-  }
+  } catch {}
 }
 
 // -------------------- LOAD USER --------------------
@@ -471,21 +507,22 @@ async function loadUser(username) {
     allItems = cached;
     setStatus("Loaded.", `${allItems.length} total`);
     applyFilters();
-
-    // needle drop when albums are ready
     needleDropSound();
     return;
   }
 
-  setStatus("Contacting Discogs…", "");
-  const items = await fetchAllCollection(username);
-  allItems = items;
-  writeCache(username, items);
-  setStatus("Loaded.", `${items.length} total`);
-  applyFilters();
-
-  // needle drop when albums are ready
-  needleDropSound();
+  setLoading(true);
+  try {
+    setStatus("Contacting Discogs…", "");
+    const items = await fetchAllCollection(username);
+    allItems = items;
+    writeCache(username, items);
+    setStatus("Loaded.", `${items.length} total`);
+    applyFilters();
+    needleDropSound();
+  } finally {
+    setLoading(false);
+  }
 }
 
 // -------------------- INIT --------------------
@@ -495,14 +532,20 @@ function init() {
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
+  // Collage toggle
+  if (els.viewMode) {
+    els.viewMode.addEventListener("click", () => {
+      collageOn = !collageOn;
+      els.viewMode.textContent = collageOn ? "Grid" : "Collage";
+      if (allItems.length) applyFilters();
+    });
+  }
+
   const drinkLink = document.getElementById("drinkLink");
   if (drinkLink) {
     const href = String(drinkLink.getAttribute("href") || "").trim();
     if (!href || href === "#") drinkLink.setAttribute("href", paypalDonateUrl());
-
-    drinkLink.addEventListener("click", () => {
-      beerCheersFX();
-    });
+    drinkLink.addEventListener("click", () => beerCheersFX());
   }
 
   const initialUser = getUserFromUrl();
@@ -514,7 +557,6 @@ function init() {
   els.go.addEventListener("click", async () => {
     const username = els.username.value.trim();
     if (!username) return;
-
     setUserInUrl(username);
     try {
       await loadUser(username);
