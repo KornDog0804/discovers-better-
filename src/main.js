@@ -107,12 +107,12 @@ function formatFormats(formatsArr) {
     .join(" • ");
 }
 
-// -------------------- NORMALIZE (Discogs link fix) --------------------
 function normalizeItem(entry) {
   const bi = entry?.basic_information || {};
   const releaseId = bi?.id || null;
 
-  const uri = entry?.uri || ""; // usually "/release/12345"
+  // BEST: Discogs gives entry.uri like "/release/12345"
+  const uri = entry?.uri || "";
   const discogsUrl = uri
     ? (uri.startsWith("http") ? uri : `https://www.discogs.com${uri}`)
     : (releaseId ? `https://www.discogs.com/release/${releaseId}` : "");
@@ -215,23 +215,23 @@ function createObserver() {
   );
 }
 
-// -------------------- OPEN DISCOGS RELIABLY --------------------
+// -------------------- OPEN DISCOGS (hard-mode safe) --------------------
 function openDiscogs(url) {
   if (!url) return;
 
-  // In-app browsers can be picky; window.open from a real click is usually safest.
+  // Direct navigation is the most reliable across in-app browsers
+  // (window.open often gets blocked)
   try {
+    // If you REALLY want new tab behavior, keep this first:
     const w = window.open(url, "_blank", "noopener,noreferrer");
     if (w) return;
   } catch {}
 
-  // Fallback
-  try {
-    location.href = url;
-  } catch {}
+  // Fallback that ALWAYS works:
+  location.href = url;
 }
 
-// -------------------- MODAL --------------------
+// -------------------- MODAL (optional) --------------------
 let currentModalUrl = "";
 
 function openModal(item) {
@@ -310,12 +310,28 @@ function renderGrid(items) {
     badge.innerHTML = `
       <div class="t">${escapeHtml(item.title)}</div>
       <div class="a">${escapeHtml(item.artist || "")}${item.year ? ` • ${item.year}` : ""}</div>
+      <div class="discogs-hint">Tap to open Discogs ↗</div>
     `;
 
     tile.appendChild(img);
     tile.appendChild(badge);
 
-    tile.addEventListener("click", () => openModal(item));
+    // ✅ MAIN ACTION: tap opens Discogs release page
+    tile.addEventListener("click", () => openDiscogs(item.discogsUrl));
+
+    // Optional: long-press opens modal (for details)
+    let pressTimer = null;
+    tile.addEventListener("touchstart", () => {
+      pressTimer = setTimeout(() => openModal(item), 450);
+    }, { passive: true });
+    tile.addEventListener("touchend", () => {
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = null;
+    });
+    tile.addEventListener("touchmove", () => {
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = null;
+    }, { passive: true });
 
     frag.appendChild(tile);
     observer.observe(img);
@@ -564,33 +580,11 @@ function init() {
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
-  // Collage toggle (only if button exists)
   if (els.viewMode) {
     els.viewMode.addEventListener("click", () => {
       collageOn = !collageOn;
       els.viewMode.textContent = collageOn ? "Grid" : "Collage";
       if (allItems.length) applyFilters();
-    });
-  }
-
-  // Make modal link ALWAYS open (even in picky mobile browsers)
-  if (els.modalLink) {
-    els.modalLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const href = els.modalLink.href || currentModalUrl;
-      openDiscogs(href);
-    });
-  }
-
-  // Bonus: tapping the cover opens Discogs too
-  if (els.modalImg) {
-    els.modalImg.addEventListener("click", (e) => {
-      // Only if we have a URL
-      if (!currentModalUrl) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openDiscogs(currentModalUrl);
     });
   }
 
