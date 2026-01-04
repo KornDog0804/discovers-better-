@@ -23,6 +23,7 @@ const els = {
   modalLink: document.getElementById("modalLink"),
 };
 
+const LS_TOKEN_KEY = "discogs_token";
 const CACHE_PREFIX = "discovers_cache_v1_";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
 
@@ -30,30 +31,21 @@ let allItems = [];
 let viewItems = [];
 let observer = null;
 
-// --- NEW: Netlify proxy fetch helper ---
-// Calls: /.netlify/functions/discogs?path=/users/...
-async function discogsApi(path) {
-  const url = `/.netlify/functions/discogs?path=${encodeURIComponent(path)}`;
-  const res = await fetch(url);
-
-  if (res.status === 429) {
-    throw new Error("Rate limited (429).");
-  }
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`Discogs error ${res.status}. ${txt?.slice(0, 120) || ""}`);
-  }
-  return res.json();
+function getToken() {
+  return localStorage.getItem(LS_TOKEN_KEY) || "";
 }
 
-// Token UI is no longer needed (public app via server token)
+function setToken(token) {
+  if (!token) return;
+  localStorage.setItem(LS_TOKEN_KEY, token.trim());
+  updateTokenHint();
+}
+
 function updateTokenHint() {
-  if (els.tokenHint) {
-    els.tokenHint.textContent = "Public mode: no Discogs token needed.";
-  }
-  if (els.setToken) {
-    els.setToken.style.display = "none";
-  }
+  const has = !!getToken();
+  els.tokenHint.textContent = has
+    ? "Discogs token set (stored in this browser)."
+    : "You need a Discogs Personal Access Token (free). Click “Set Discogs token”.";
 }
 
 function cacheKey(username) {
@@ -75,7 +67,10 @@ function readCache(username) {
 
 function writeCache(username, items) {
   try {
-    localStorage.setItem(cacheKey(username), JSON.stringify({ ts: Date.now(), items }));
+    localStorage.setItem(
+      cacheKey(username),
+      JSON.stringify({ ts: Date.now(), items })
+    );
   } catch {
     // ignore storage issues
   }
@@ -100,15 +95,27 @@ function formatArtists(artistsArr) {
 
 function formatFormats(formatsArr) {
   if (!Array.isArray(formatsArr)) return "";
-  return formatsArr.map(f => {
-    const desc = Array.isArray(f.descriptions) ? f.descriptions.join(", ") : "";
-    const qty = f.qty ? `${f.qty}× ` : "";
-    return `${qty}${f.name}${desc ? ` (${desc})` : ""}`.trim();
-  }).join(" • ");
+  // e.g. [{name:"Vinyl", qty:"1", descriptions:["LP","Album"]}]
+  return formatsArr
+    .map(f => {
+      const desc = Array.isArray(f.descriptions) ? f.descriptions.join(", ") : "";
+      const qty = f.qty ? `${f.qty}× ` : "";
+      return `${qty}${f.name}${desc ? ` (${desc})` : ""}`.trim();
+    })
+    .join(" • ");
 }
 
+/**
+ * ✅ FIXED normalizeItem:
+ * Build Discogs web link as https://www.discogs.com/release/<releaseId>
+ * instead of trying to convert api.discogs.com URLs.
+ */
 function normalizeItem(entry) {
+  // Discogs collection entry shape:
+  // entry.basic_information.cover_image, title, year, artists, formats, id, etc.
   const bi = entry?.basic_information || {};
+  const releaseId = bi?.id ?? entry?.id; // Discogs Release ID (number)
+
   return {
     id: entry?.id ?? bi?.id ?? crypto.randomUUID(),
     title: bi?.title || "(Unknown Title)",
@@ -116,12 +123,40 @@ function normalizeItem(entry) {
     year: bi?.year || null,
     cover: bi?.cover_image || "",
     formats: formatFormats(bi?.formats),
-    discogsUrl: bi?.resource_url ? bi.resource_url.replace("api.discogs.com", "www.discogs.com") : "",
+
+    // ✅ correct Discogs page URL (prevents 404)
+    discogsUrl: releaseId ? `https://www.discogs.com/release/${releaseId}` : "",
+
     dateAdded: entry?.date_added || null,
   };
 }
 
+async function discogsFetch(url) {
+  const token = getToken();
+  if (!token) {
+    throw new Error("Missing Discogs token.");
+  }
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Discogs token=${token}`,
+      "User-Agent": "discovers-better/1.0 (+local)",
+    },
+  });
+
+  if (res.status === 429) {
+    // rate limit — back off a bit
+    throw new Error("Rate limited (429).");
+  }
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Discogs error ${res.status}. ${txt?.slice(0, 120) || ""}`);
+  }
+  return res.json();
+}
+
 async function fetchAllCollection(username) {
+  // folder 0 = "All"
   const perPage = 100;
   let page = 1;
   let pages = 1;
@@ -129,17 +164,16 @@ async function fetchAllCollection(username) {
 
   while (page <= pages) {
     setStatus(`Loading… page ${page} of ${pages}`, "");
-
-    const path =
-      `/users/${encodeURIComponent(username)}` +
-      `/collection/folders/0/releases?per_page=${perPage}&page=${page}&sort=added&sort_order=desc`;
+    const url = `https://api.discogs.com/users/${encodeURIComponent(
+      username
+    )}/collection/folders/0/releases?per_page=${perPage}&page=${page}&sort=added&sort_order=desc`;
 
     let json;
 
     // basic retry with backoff for 429s
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        json = await discogsApi(path);
+        json = await discogsFetch(url);
         break;
       } catch (e) {
         const msg = String(e?.message || e);
@@ -171,16 +205,19 @@ function destroyObserver() {
 
 function createObserver() {
   destroyObserver();
-  observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      const img = entry.target;
-      const src = img.dataset.src;
-      if (src) img.src = src;
-      img.removeAttribute("data-src");
-      observer.unobserve(img);
-    }
-  }, { rootMargin: "400px" });
+  observer = new IntersectionObserver(
+    entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) img.src = src;
+        img.removeAttribute("data-src");
+        observer.unobserve(img);
+      }
+    },
+    { rootMargin: "400px" }
+  );
 }
 
 function openModal(item) {
@@ -190,6 +227,7 @@ function openModal(item) {
   els.modalArtist.textContent = item.artist || "";
   els.modalYear.textContent = item.year ? `Year: ${item.year}` : "";
   els.modalFormat.textContent = item.formats ? `Format: ${item.formats}` : "";
+
   if (item.discogsUrl) {
     els.modalLink.href = item.discogsUrl;
     els.modalLink.style.display = "inline-block";
@@ -218,6 +256,7 @@ function renderGrid(items) {
     tile.title = `${item.artist} — ${item.title}`;
 
     const img = document.createElement("img");
+    // lazy load
     img.dataset.src = item.cover || "";
     img.alt = `${item.artist} — ${item.title}`;
     img.loading = "lazy";
@@ -226,7 +265,9 @@ function renderGrid(items) {
     badge.className = "badge";
     badge.innerHTML = `
       <div class="t">${escapeHtml(item.title)}</div>
-      <div class="a">${escapeHtml(item.artist || "")}${item.year ? ` • ${item.year}` : ""}</div>
+      <div class="a">${escapeHtml(item.artist || "")}${
+        item.year ? ` • ${item.year}` : ""
+      }</div>
     `;
 
     tile.appendChild(img);
@@ -243,11 +284,11 @@ function renderGrid(items) {
 
 function escapeHtml(str) {
   return String(str)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function applyFilters() {
@@ -255,22 +296,27 @@ function applyFilters() {
   let items = allItems.slice();
 
   if (q) {
-    items = items.filter(it =>
-      (it.title || "").toLowerCase().includes(q) ||
-      (it.artist || "").toLowerCase().includes(q)
+    items = items.filter(
+      it =>
+        (it.title || "").toLowerCase().includes(q) ||
+        (it.artist || "").toLowerCase().includes(q)
     );
   }
 
   const sort = els.sort.value;
 
-  const byStr = (a,b,ka,kb) => (ka.localeCompare(kb, undefined, { sensitivity:"base" }) || a.id - b.id);
-  const safeYear = (y) => (typeof y === "number" ? y : (parseInt(y,10) || 0));
+  const byStr = (a, b, ka, kb) =>
+    ka.localeCompare(kb, undefined, { sensitivity: "base" }) || a.id - b.id;
 
-  items.sort((a,b) => {
-    if (sort === "artist_asc") return byStr(a,b,(a.artist||""),(b.artist||""));
-    if (sort === "title_asc") return byStr(a,b,(a.title||""),(b.title||""));
+  const safeYear = y => (typeof y === "number" ? y : parseInt(y, 10) || 0);
+
+  items.sort((a, b) => {
+    if (sort === "artist_asc") return byStr(a, b, a.artist || "", b.artist || "");
+    if (sort === "title_asc") return byStr(a, b, a.title || "", b.title || "");
     if (sort === "year_desc") return safeYear(b.year) - safeYear(a.year);
     if (sort === "year_asc") return safeYear(a.year) - safeYear(b.year);
+
+    // recently added default
     const da = a.dateAdded ? Date.parse(a.dateAdded) : 0;
     const db = b.dateAdded ? Date.parse(b.dateAdded) : 0;
     return db - da;
@@ -329,12 +375,23 @@ function init() {
   const initialUser = getUserFromUrl();
   if (initialUser) {
     els.username.value = initialUser;
-    loadUser(initialUser).catch(err => setStatus(String(err.message || err), ""));
+    // auto-load if token exists
+    if (getToken())
+      loadUser(initialUser).catch(err =>
+        setStatus(String(err.message || err), "")
+      );
   }
 
   els.go.addEventListener("click", async () => {
     const username = els.username.value.trim();
     if (!username) return;
+
+    if (!getToken()) {
+      alert(
+        "You need a Discogs Personal Access Token first. Click “Set Discogs token”."
+      );
+      return;
+    }
 
     setUserInUrl(username);
     try {
@@ -344,7 +401,7 @@ function init() {
     }
   });
 
-  els.username.addEventListener("keydown", (e) => {
+  els.username.addEventListener("keydown", e => {
     if (e.key === "Enter") els.go.click();
   });
 
@@ -368,10 +425,22 @@ function init() {
     setStatus("Cache cleared.", "");
   });
 
+  els.setToken.addEventListener("click", () => {
+    const current = getToken();
+    const token = prompt(
+      "Paste your Discogs Personal Access Token here.\n\nGet it at: Discogs → Settings → Developers → Personal access token",
+      current
+    );
+    if (token && token.trim()) {
+      setToken(token);
+      alert("Token saved in this browser.");
+    }
+  });
+
   // modal close
   els.modalBackdrop.addEventListener("click", closeModal);
   els.modalClose.addEventListener("click", closeModal);
-  window.addEventListener("keydown", (e) => {
+  window.addEventListener("keydown", e => {
     if (e.key === "Escape") closeModal();
   });
 }
