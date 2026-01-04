@@ -1,95 +1,56 @@
-.drink-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-}
-
-#beer {
-  display: inline-block;
-  transform-origin: 70% 80%;
-}
-
-.beer-pop {
-  animation: beerPop 520ms ease;
-}
-
-@keyframes beerPop {
-  0%   { transform: rotate(0) scale(1); }
-  20%  { transform: rotate(-12deg) scale(1.08); }
-  45%  { transform: rotate(10deg) scale(1.12); }
-  70%  { transform: rotate(-6deg) scale(1.06); }
-  100% { transform: rotate(0) scale(1); }
-}
-
-/* Tiny toast that appears near footer */
-.cheers-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%) translateY(12px);
-  opacity: 0;
-  pointer-events: none;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.75);
-  color: #fff;
-  font-weight: 700;
-  transition: opacity 220ms ease, transform 220ms ease;
-  z-index: 9999;
-}
-
-.cheers-toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
 /* ===============================
    🍺 Buy Me a Drink – KornDog FX
    =============================== */
 
 .drink-link {
-  font-weight: 600;
-  text-decoration: none;
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-weight: 600;
+  text-decoration: none;
+  position: relative;
 }
 
 .drink-link:hover {
   text-decoration: underline;
 }
 
+/* Beer emoji */
 #beer {
   display: inline-block;
-  transition: transform 0.2s ease;
+  transform-origin: 70% 80%;
 }
 
+/* Beer pop animation */
 .beer-pop {
-  animation: beerPop 0.35s ease;
+  animation: beerPop 420ms ease;
 }
 
 @keyframes beerPop {
   0%   { transform: scale(1) rotate(0deg); }
-  40%  { transform: scale(1.4) rotate(-10deg); }
-  70%  { transform: scale(1.2) rotate(6deg); }
+  30%  { transform: scale(1.35) rotate(-12deg); }
+  60%  { transform: scale(1.2) rotate(8deg); }
   100% { transform: scale(1) rotate(0deg); }
 }
 
-/* Cheers toast (mobile friendly) */
+/* ===============================
+   🍻 Cheers Toast (hidden by default)
+   =============================== */
+
 .cheers-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: 22px;
   left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: rgba(0,0,0,0.85);
+  transform: translateX(-50%) translateY(16px);
+  background: rgba(0, 0, 0, 0.85);
   color: #fff;
   padding: 10px 16px;
   border-radius: 999px;
   font-size: 0.95rem;
+  font-weight: 700;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 220ms ease, transform 220ms ease;
   z-index: 9999;
 }
 
