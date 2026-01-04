@@ -1,4 +1,4 @@
-import "./style.css";
+import "./styles.css";
 
 const els = {
   username: document.getElementById("username"),
@@ -15,7 +15,7 @@ const els = {
   tokenHint: document.getElementById("tokenHint"),
   setToken: document.getElementById("setToken"),
 
-  // Share button (must exist in HTML with id="shareWall")
+  // Share button (id="shareWall")
   shareWall: document.getElementById("shareWall"),
 
   modal: document.getElementById("modal"),
@@ -32,10 +32,8 @@ const els = {
 const CACHE_PREFIX = "discovers_cache_v1_";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
 
-// Your PayPal email (you asked for this)
+// Your PayPal email (fallback only if HTML doesn't provide a paypal.me link)
 const PAYPAL_EMAIL = "titans.rule1215@gmail.com";
-
-// Optional: default drink amount (PayPal lets them change it)
 const DEFAULT_DRINK_USD = "5.00";
 
 let allItems = [];
@@ -149,9 +147,7 @@ async function discogsFetchCollectionPage(username, page, perPage) {
     try {
       const j = JSON.parse(txt);
       throw new Error(
-        j?.error
-          ? `${j.error}${j.details ? ` — ${j.details}` : ""}`
-          : `Server error ${res.status}`
+        j?.error ? `${j.error}${j.details ? ` — ${j.details}` : ""}` : `Server error ${res.status}`
       );
     } catch {
       throw new Error(`Server error ${res.status}. ${txt.slice(0, 160)}`);
@@ -290,14 +286,18 @@ function applyFilters() {
 
   if (q) {
     items = items.filter(
-      (it) => (it.title || "").toLowerCase().includes(q) || (it.artist || "").toLowerCase().includes(q)
+      (it) =>
+        (it.title || "").toLowerCase().includes(q) ||
+        (it.artist || "").toLowerCase().includes(q)
     );
   }
 
   const sort = els.sort.value;
 
   const byStr = (a, b, ka, kb) =>
-    ka.localeCompare(kb, undefined, { sensitivity: "base" }) || String(a.id).localeCompare(String(b.id));
+    ka.localeCompare(kb, undefined, { sensitivity: "base" }) ||
+    String(a.id).localeCompare(String(b.id));
+
   const safeYear = (y) => (typeof y === "number" ? y : parseInt(y, 10) || 0);
 
   items.sort((a, b) => {
@@ -361,7 +361,7 @@ function setUserInUrl(username) {
   history.replaceState({}, "", u.toString());
 }
 
-// -------------------- SHARE WALL (WORKS) --------------------
+// -------------------- SHARE WALL --------------------
 async function shareWall() {
   const username = (els.username?.value || "").trim();
   if (!username) {
@@ -394,10 +394,8 @@ async function shareWall() {
   }
 }
 
-// -------------------- 🍺 PAYPAL DRINK LINK (EMAIL-BASED) --------------------
-// Uses PayPal "Donate" style URL with your email.
-// Note: If you later get a PayPal.me link working, that’s even cleaner.
-function paypalDrinkUrl() {
+// -------------------- 🍺 PAYPAL FALLBACK (email donate link) --------------------
+function paypalDonateUrl() {
   const base = "https://www.paypal.com/donate";
   const u = new URL(base);
   u.searchParams.set("business", PAYPAL_EMAIL);
@@ -431,20 +429,24 @@ function beerCheersFX() {
 
 // -------------------- INIT --------------------
 function init() {
-  // ✅ HIDE token UI (no nerd text)
+  // Hide token UI (no nerd text)
   if (els.tokenHint) els.tokenHint.textContent = "";
   if (els.setToken) els.setToken.style.display = "none";
 
-  // ✅ Hook Share button if it exists
+  // Hook Share button
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
-  // ✅ Hook Drink link (PayPal) if present
+  // Hook Drink link: DO NOT overwrite paypal.me if HTML already has it.
   const drinkLink = document.getElementById("drinkLink");
   if (drinkLink) {
-    // If your HTML link still points to paypal.me, this overrides it with your EMAIL donate link.
-    drinkLink.href = paypalDrinkUrl();
+    const href = String(drinkLink.getAttribute("href") || "").trim();
 
-    // Trigger cheers effect on tap/click (words OR 🍺)
+    // If for some reason href is missing, set a safe fallback
+    if (!href || href === "#") {
+      drinkLink.setAttribute("href", paypalDonateUrl());
+    }
+
+    // Cheers FX on tap/click (words OR 🍺)
     drinkLink.addEventListener("click", () => {
       beerCheersFX();
     });
