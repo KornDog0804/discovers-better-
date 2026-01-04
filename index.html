@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DisCovers — Better</title>
   </head>
+
   <body>
     <div id="app">
       <header class="hero">
@@ -13,18 +14,30 @@
             <div class="logo">◼︎</div>
             <div>
               <h1>DisCovers</h1>
-              <p class="sub">Album-wall visualizer for Discogs collections. Cleaner. Faster. Sharper.</p>
+              <p class="sub">
+                Album-wall visualizer for Discogs collections. Cleaner. Faster. Sharper.
+              </p>
             </div>
           </div>
 
           <div class="controls">
             <div class="row">
-              <input id="username" type="text" placeholder="Discogs username" autocomplete="off" />
+              <input
+                id="username"
+                type="text"
+                placeholder="Discogs username"
+                autocomplete="off"
+              />
               <button id="go">Load</button>
             </div>
 
             <div class="row">
-              <input id="search" type="text" placeholder="Search artist / title…" autocomplete="off" />
+              <input
+                id="search"
+                type="text"
+                placeholder="Search artist / title…"
+                autocomplete="off"
+              />
               <select id="sort">
                 <option value="added_desc">Recently added</option>
                 <option value="artist_asc">Artist A → Z</option>
@@ -32,8 +45,10 @@
                 <option value="year_desc">Year (new → old)</option>
                 <option value="year_asc">Year (old → new)</option>
               </select>
+
               <button id="shuffle" class="ghost">Shuffle</button>
               <button id="clear" class="ghost">Clear cache</button>
+              <button id="shareWall" class="ghost">Share your wall</button>
             </div>
 
             <div class="status">
@@ -63,15 +78,48 @@
               <div id="modalArtist" class="modal-artist"></div>
               <div id="modalYear" class="modal-year"></div>
               <div id="modalFormat" class="modal-format"></div>
-              <a id="modalLink" class="modal-link" target="_blank" rel="noreferrer">Open on Discogs</a>
+              <a
+                id="modalLink"
+                class="modal-link"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open on Discogs
+              </a>
             </div>
           </div>
         </div>
       </div>
 
       <footer class="footer">
-        <span>Built by you. Powered by Discogs.</span>
-        <button id="setToken" class="linkish">Set Discogs token</button>
+        <div style="text-align:center; line-height:1.6;">
+          <div>
+            Inspired by the original concept by
+            <strong>Skye Klein</strong>.
+            Rebuilt louder by
+            <a
+              href="https://korndogrecords.com"
+              target="_blank"
+              rel="noreferrer"
+            >
+              KornDog Records
+            </a>.
+          </div>
+
+          <div style="margin-top:6px;">
+            <a
+              href="https://www.paypal.me/titansrule1215"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Tip the builder
+            </a>
+            &nbsp;•&nbsp;
+            <a href="mailto:korndogrecords@gmail.com">
+              korndogrecords@gmail.com
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
 
