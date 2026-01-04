@@ -23,7 +23,6 @@ const els = {
   modalLink: document.getElementById("modalLink"),
 };
 
-const LS_TOKEN_KEY = "discogs_token";
 const CACHE_PREFIX = "discovers_cache_v1_";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
 
@@ -31,21 +30,30 @@ let allItems = [];
 let viewItems = [];
 let observer = null;
 
-function getToken() {
-  return localStorage.getItem(LS_TOKEN_KEY) || "";
+// --- NEW: Netlify proxy fetch helper ---
+// Calls: /.netlify/functions/discogs?path=/users/...
+async function discogsApi(path) {
+  const url = `/.netlify/functions/discogs?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url);
+
+  if (res.status === 429) {
+    throw new Error("Rate limited (429).");
+  }
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Discogs error ${res.status}. ${txt?.slice(0, 120) || ""}`);
+  }
+  return res.json();
 }
 
-function setToken(token) {
-  if (!token) return;
-  localStorage.setItem(LS_TOKEN_KEY, token.trim());
-  updateTokenHint();
-}
-
+// Token UI is no longer needed (public app via server token)
 function updateTokenHint() {
-  const has = !!getToken();
-  els.tokenHint.textContent = has
-    ? "Discogs token set (stored in this browser)."
-    : "You need a Discogs Personal Access Token (free). Click “Set Discogs token”.";
+  if (els.tokenHint) {
+    els.tokenHint.textContent = "Public mode: no Discogs token needed.";
+  }
+  if (els.setToken) {
+    els.setToken.style.display = "none";
+  }
 }
 
 function cacheKey(username) {
@@ -92,7 +100,6 @@ function formatArtists(artistsArr) {
 
 function formatFormats(formatsArr) {
   if (!Array.isArray(formatsArr)) return "";
-  // e.g. [{name:"Vinyl", qty:"1", descriptions:["LP","Album"]}]
   return formatsArr.map(f => {
     const desc = Array.isArray(f.descriptions) ? f.descriptions.join(", ") : "";
     const qty = f.qty ? `${f.qty}× ` : "";
@@ -101,8 +108,6 @@ function formatFormats(formatsArr) {
 }
 
 function normalizeItem(entry) {
-  // Discogs collection entry shape:
-  // entry.basic_information.cover_image, title, year, artists, formats, resource_url, id, etc.
   const bi = entry?.basic_information || {};
   return {
     id: entry?.id ?? bi?.id ?? crypto.randomUUID(),
@@ -116,32 +121,7 @@ function normalizeItem(entry) {
   };
 }
 
-async function discogsFetch(url) {
-  const token = getToken();
-  if (!token) {
-    throw new Error("Missing Discogs token.");
-  }
-
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Discogs token=${token}`,
-      "User-Agent": "discovers-better/1.0 (+local)",
-    },
-  });
-
-  if (res.status === 429) {
-    // rate limit — back off a bit
-    throw new Error("Rate limited (429).");
-  }
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`Discogs error ${res.status}. ${txt?.slice(0, 120) || ""}`);
-  }
-  return res.json();
-}
-
 async function fetchAllCollection(username) {
-  // folder 0 = "All"
   const perPage = 100;
   let page = 1;
   let pages = 1;
@@ -149,13 +129,17 @@ async function fetchAllCollection(username) {
 
   while (page <= pages) {
     setStatus(`Loading… page ${page} of ${pages}`, "");
-    const url = `https://api.discogs.com/users/${encodeURIComponent(username)}/collection/folders/0/releases?per_page=${perPage}&page=${page}&sort=added&sort_order=desc`;
+
+    const path =
+      `/users/${encodeURIComponent(username)}` +
+      `/collection/folders/0/releases?per_page=${perPage}&page=${page}&sort=added&sort_order=desc`;
+
     let json;
 
     // basic retry with backoff for 429s
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        json = await discogsFetch(url);
+        json = await discogsApi(path);
         break;
       } catch (e) {
         const msg = String(e?.message || e);
@@ -234,7 +218,6 @@ function renderGrid(items) {
     tile.title = `${item.artist} — ${item.title}`;
 
     const img = document.createElement("img");
-    // lazy load
     img.dataset.src = item.cover || "";
     img.alt = `${item.artist} — ${item.title}`;
     img.loading = "lazy";
@@ -288,7 +271,6 @@ function applyFilters() {
     if (sort === "title_asc") return byStr(a,b,(a.title||""),(b.title||""));
     if (sort === "year_desc") return safeYear(b.year) - safeYear(a.year);
     if (sort === "year_asc") return safeYear(a.year) - safeYear(b.year);
-    // recently added default
     const da = a.dateAdded ? Date.parse(a.dateAdded) : 0;
     const db = b.dateAdded ? Date.parse(b.dateAdded) : 0;
     return db - da;
@@ -347,18 +329,12 @@ function init() {
   const initialUser = getUserFromUrl();
   if (initialUser) {
     els.username.value = initialUser;
-    // auto-load if token exists
-    if (getToken()) loadUser(initialUser).catch(err => setStatus(String(err.message || err), ""));
+    loadUser(initialUser).catch(err => setStatus(String(err.message || err), ""));
   }
 
   els.go.addEventListener("click", async () => {
     const username = els.username.value.trim();
     if (!username) return;
-
-    if (!getToken()) {
-      alert("You need a Discogs Personal Access Token first. Click “Set Discogs token”.");
-      return;
-    }
 
     setUserInUrl(username);
     try {
@@ -390,18 +366,6 @@ function init() {
   els.clear.addEventListener("click", () => {
     clearAllCaches();
     setStatus("Cache cleared.", "");
-  });
-
-  els.setToken.addEventListener("click", () => {
-    const current = getToken();
-    const token = prompt(
-      "Paste your Discogs Personal Access Token here.\n\nGet it at: Discogs → Settings → Developers → Personal access token",
-      current
-    );
-    if (token && token.trim()) {
-      setToken(token);
-      alert("Token saved in this browser.");
-    }
   });
 
   // modal close
