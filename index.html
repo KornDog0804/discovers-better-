@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DisCovers — Better</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="hero">
+        <div class="hero-inner">
+          <div class="brand">
+            <div class="logo">◼︎</div>
+            <div>
+              <h1>DisCovers</h1>
+              <p class="sub">Album-wall visualizer for Discogs collections. Cleaner. Faster. Sharper.</p>
+            </div>
+          </div>
+
+          <div class="controls">
+            <div class="row">
+              <input id="username" type="text" placeholder="Discogs username" autocomplete="off" />
+              <button id="go">Load</button>
+            </div>
+
+            <div class="row">
+              <input id="search" type="text" placeholder="Search artist / title…" autocomplete="off" />
+              <select id="sort">
+                <option value="added_desc">Recently added</option>
+                <option value="artist_asc">Artist A → Z</option>
+                <option value="title_asc">Title A → Z</option>
+                <option value="year_desc">Year (new → old)</option>
+                <option value="year_asc">Year (old → new)</option>
+              </select>
+              <button id="shuffle" class="ghost">Shuffle</button>
+              <button id="clear" class="ghost">Clear cache</button>
+            </div>
+
+            <div class="status">
+              <span id="statusText">Enter a username and hit Load.</span>
+              <span id="countText"></span>
+            </div>
+
+            <div class="hint">
+              <span id="tokenHint"></span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <div id="grid" class="grid"></div>
+      </main>
+
+      <div id="modal" class="modal" aria-hidden="true">
+        <div class="modal-backdrop" id="modalBackdrop"></div>
+        <div class="modal-card" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+          <div class="modal-body">
+            <img id="modalImg" alt="" />
+            <div class="modal-meta">
+              <div id="modalTitle" class="modal-title"></div>
+              <div id="modalArtist" class="modal-artist"></div>
+              <div id="modalYear" class="modal-year"></div>
+              <div id="modalFormat" class="modal-format"></div>
+              <a id="modalLink" class="modal-link" target="_blank" rel="noreferrer">Open on Discogs</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <span>Built by you. Powered by Discogs.</span>
+        <button id="setToken" class="linkish">Set Discogs token</button>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
