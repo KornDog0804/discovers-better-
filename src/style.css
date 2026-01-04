@@ -25,15 +25,20 @@ body{
 
 #app{min-height:100%; display:flex; flex-direction:column}
 
+/* =========================
+   HEADER: VinylWall identity
+   ========================= */
 .hero{
   border-bottom:1px solid var(--line);
-  background: linear-gradient(to bottom, rgba(255,255,255,.04), transparent);
+  background:
+    radial-gradient(900px 400px at 40% 0%, rgba(255,255,255,.10), transparent 55%),
+    linear-gradient(to bottom, rgba(255,255,255,.05), transparent);
 }
 
 .hero-inner{
   max-width:1200px;
   margin:0 auto;
-  padding:18px 14px;
+  padding:22px 14px 18px;
   display:flex;
   gap:16px;
   align-items:flex-start;
@@ -41,24 +46,92 @@ body{
   flex-wrap:wrap;
 }
 
-.brand{display:flex; gap:12px; align-items:center}
-.logo{
-  width:40px;height:40px;border-radius:12px;
-  background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.05));
-  border:1px solid var(--line);
-  display:grid;place-items:center;
-  box-shadow: 0 8px 30px rgba(0,0,0,.45);
-}
-h1{font-size:22px; margin:0; letter-spacing:.3px}
-.sub{margin:2px 0 0; color:var(--muted); font-size:13px; max-width:520px}
+.brand{display:flex; gap:14px; align-items:center}
+.brand-text{display:flex; flex-direction:column}
 
+/* Vinyl logo (colored record vibe) */
+.logo{
+  width:56px;height:56px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+  position:relative;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0,0,0,.0) 0 10%, rgba(0,0,0,.85) 11% 16%, rgba(0,0,0,.0) 17%),
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,.06) 0 55%, rgba(255,255,255,0) 56%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.05) 0 1px, rgba(255,255,255,0) 3px 6px),
+    conic-gradient(from 210deg,
+      rgba(170,0,255,.35),
+      rgba(0,255,170,.28),
+      rgba(255,70,200,.26),
+      rgba(70,170,255,.22),
+      rgba(170,0,255,.35)
+    ),
+    radial-gradient(circle at 50% 50%, #0a0a0f 0 60%, #000 61%);
+  overflow:hidden;
+}
+
+/* center label */
+.logo::before{
+  content:"";
+  position:absolute; inset:0;
+  margin:auto;
+  width:18px;height:18px;border-radius:999px;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.25) 0 22%, rgba(255,255,255,0) 23%),
+    radial-gradient(circle, rgba(255,255,255,.12), rgba(255,255,255,0) 70%);
+  border:1px solid rgba(255,255,255,.20);
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.45);
+}
+
+/* highlight */
+.logo::after{
+  content:"";
+  position:absolute;
+  left:-20%; top:-10%;
+  width:70%; height:70%;
+  transform: rotate(25deg);
+  background: linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,0));
+  border-radius: 999px;
+  opacity:.75;
+}
+
+h1{
+  font-size:30px;
+  margin:0;
+  letter-spacing:.6px;
+  line-height:1.05;
+  text-shadow: 0 10px 30px rgba(0,0,0,.65);
+}
+
+.sub{
+  margin:6px 0 0;
+  color:rgba(234,234,242,.75);
+  font-size:14px;
+  max-width:520px;
+}
+
+/* subtle underline accent under title */
+.brand-text::after{
+  content:"";
+  margin-top:10px;
+  width:180px;
+  height:2px;
+  border-radius:999px;
+  background: linear-gradient(90deg, rgba(170,0,255,.65), rgba(0,255,170,.55), rgba(255,70,200,.55));
+  opacity:.9;
+}
+
+/* =========================
+   Controls
+   ========================= */
 .controls{
-  min-width: min(680px, 100%);
-  background: rgba(16,16,24,.55);
-  border:1px solid var(--line);
+  min-width: min(720px, 100%);
+  background: rgba(16,16,24,.62);
+  border:1px solid rgba(255,255,255,.10);
   border-radius: var(--radius);
   padding:12px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 40px rgba(0,0,0,.35);
 }
 
 .row{display:flex; gap:10px; flex-wrap:wrap}
@@ -91,10 +164,7 @@ button{
 }
 button:hover{transform: translateY(-1px); border-color: rgba(255,255,255,.18)}
 button:active{transform: translateY(0px)}
-
-button.ghost{
-  background: rgba(0,0,0,.20);
-}
+button.ghost{background: rgba(0,0,0,.20)}
 
 .status{
   margin-top:10px;
@@ -105,12 +175,9 @@ button.ghost{
   font-size:13px;
 }
 
-.hint{
-  margin-top:6px;
-  color: rgba(234,234,242,.55);
-  font-size:12px;
-}
-
+/* =========================
+   Main / Grid
+   ========================= */
 main{
   flex:1;
   max-width:1200px;
@@ -172,6 +239,9 @@ main{
 .badge .t{font-weight:650; line-height:1.15}
 .badge .a{opacity:.85; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
+/* =========================
+   Footer + Drink link FX
+   ========================= */
 .footer{
   border-top:1px solid var(--line);
   padding:14px;
@@ -186,15 +256,49 @@ main{
   width:100%;
 }
 
-.linkish{
-  background:none;
-  border:none;
-  color: rgba(234,234,242,.78);
-  text-decoration: underline;
-  padding:0;
+.drink-link{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  text-decoration:none;
+  font-weight:600;
 }
-.linkish:hover{color: var(--text)}
+.drink-link:hover{text-decoration:underline}
 
+#beer{display:inline-block; transform-origin: 70% 80%;}
+.beer-pop{animation: beerPop 520ms ease;}
+@keyframes beerPop{
+  0%   { transform: rotate(0) scale(1); }
+  20%  { transform: rotate(-12deg) scale(1.08); }
+  45%  { transform: rotate(10deg) scale(1.12); }
+  70%  { transform: rotate(-6deg) scale(1.06); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+/* Toast: hidden unless shown via JS */
+.cheers-toast{
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%) translateY(12px);
+  opacity: 0;
+  pointer-events: none;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  font-weight: 700;
+  transition: opacity 220ms ease, transform 220ms ease;
+  z-index: 9999;
+}
+.cheers-toast.show{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* =========================
+   Modal
+   ========================= */
 .modal{
   position:fixed; inset:0;
   display:none;
@@ -256,83 +360,4 @@ main{
   margin-top:8px;
   display:inline-block;
   color: rgba(234,234,242,.9);
-}
-
-/* ===============================
-   🍺 Buy Me a Drink — KornDog FX
-   (NO “Cheers” on load)
-   =============================== */
-
-.drink-link{
-  font-weight:600;
-  text-decoration:none;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-}
-
-.drink-link:hover{
-  text-decoration:underline;
-}
-
-#beer{
-  display:inline-block;
-  transform-origin:70% 80%;
-}
-
-.beer-pop{
-  animation: beerPop 0.35s ease;
-}
-
-@keyframes beerPop{
-  0%   { transform: scale(1) rotate(0deg); }
-  40%  { transform: scale(1.4) rotate(-10deg); }
-  70%  { transform: scale(1.2) rotate(6deg); }
-  100% { transform: scale(1) rotate(0deg); }
-}
-
-/* The toast itself is hidden unless JS shows it */
-.cheers-toast{
-  position:fixed;
-  left:50%;
-  bottom:24px;
-  transform:translateX(-50%) translateY(20px);
-  background: rgba(0,0,0,.85);
-  color:#fff;
-  padding:10px 16px;
-  border-radius:999px;
-  font-size:.95rem;
-  font-weight:700;
-  opacity:0;
-  pointer-events:none;
-  transition: opacity .2s ease, transform .2s ease;
-  z-index:9999;
-}
-
-.cheers-toast.show{
-  opacity:1;
-  transform:translateX(-50%) translateY(0);
-}
-/* Make the logo look like a vinyl record instead of a plain square */
-.logo{
-  width:44px;
-  height:44px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,.85) 0 2px, transparent 3px),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,.12) 0 9px, transparent 10px),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,.08) 0 16px, transparent 17px),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,.06) 0 22px, transparent 23px),
-    linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.05));
-  box-shadow: 0 8px 30px rgba(0,0,0,.45);
-}
-
-/* Hide the ◼︎ character */
-.logo{ color: transparent; }
-@media (max-width: 520px){
-  .hero-inner{ padding:14px 12px; gap:12px; }
-  h1{ font-size:20px; }
-  .sub{ font-size:12px; }
-  .controls{ padding:10px; }
 }
