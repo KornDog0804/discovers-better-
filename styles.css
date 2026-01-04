@@ -43,3 +43,57 @@
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+/* ===============================
+   🍺 Buy Me a Drink – KornDog FX
+   =============================== */
+
+.drink-link {
+  font-weight: 600;
+  text-decoration: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.drink-link:hover {
+  text-decoration: underline;
+}
+
+#beer {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.beer-pop {
+  animation: beerPop 0.35s ease;
+}
+
+@keyframes beerPop {
+  0%   { transform: scale(1) rotate(0deg); }
+  40%  { transform: scale(1.4) rotate(-10deg); }
+  70%  { transform: scale(1.2) rotate(6deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Cheers toast (mobile friendly) */
+.cheers-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+}
+
+.cheers-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
