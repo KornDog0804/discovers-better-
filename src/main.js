@@ -25,6 +25,9 @@ const els = {
   modalYear: document.getElementById("modalYear"),
   modalFormat: document.getElementById("modalFormat"),
   modalLink: document.getElementById("modalLink"),
+
+  // OPTIONAL (only works if you add it in HTML)
+  modalValue: document.getElementById("modalValue"),
 };
 
 const CACHE_PREFIX = "discovers_cache_v1_";
@@ -38,7 +41,7 @@ let viewItems = [];
 let observer = null;
 let collageOn = false;
 
-// -------------------- LOADING STATE (spin + tonearm) --------------------
+// -------------------- LOADING STATE --------------------
 function setLoading(on) {
   document.body.classList.toggle("is-loading", !!on);
   if (els.go) els.go.disabled = !!on;
@@ -64,7 +67,10 @@ function readCache(username) {
 
 function writeCache(username, items) {
   try {
-    localStorage.setItem(cacheKey(username), JSON.stringify({ ts: Date.now(), items }));
+    localStorage.setItem(
+      cacheKey(username),
+      JSON.stringify({ ts: Date.now(), items })
+    );
   } catch {}
 }
 
@@ -107,13 +113,24 @@ function formatFormats(formatsArr) {
     .join(" • ");
 }
 
+// -------------------- NORMALIZE DISCOGS ENTRY --------------------
+// ✅ Guarantees "current release" page:
+// Uses basic_information.id -> /release/{id}
 function normalizeItem(entry) {
   const bi = entry?.basic_information || {};
   const releaseId = bi?.id || null;
+
+  // exact owned release page
   const discogsUrl = releaseId ? `https://www.discogs.com/release/${releaseId}` : "";
 
+  // quick value / marketplace page
+  const marketplaceUrl = releaseId ? `https://www.discogs.com/sell/release/${releaseId}` : "";
+
   return {
-    id: entry?.id ?? releaseId ?? (globalThis.crypto?.randomUUID?.() || String(Math.random())),
+    id:
+      entry?.id ??
+      releaseId ??
+      (globalThis.crypto?.randomUUID?.() || String(Math.random())),
     releaseId,
     title: bi?.title || "(Unknown Title)",
     artist: formatArtists(bi?.artists),
@@ -121,6 +138,7 @@ function normalizeItem(entry) {
     cover: bi?.cover_image || "",
     formats: formatFormats(bi?.formats),
     discogsUrl,
+    marketplaceUrl,
     dateAdded: entry?.date_added || null,
   };
 }
@@ -140,7 +158,9 @@ async function discogsFetchCollectionPage(username, page, perPage) {
     try {
       const j = JSON.parse(txt);
       throw new Error(
-        j?.error ? `${j.error}${j.details ? ` — ${j.details}` : ""}` : `Server error ${res.status}`
+        j?.error
+          ? `${j.error}${j.details ? ` — ${j.details}` : ""}`
+          : `Server error ${res.status}`
       );
     } catch {
       throw new Error(`Server error ${res.status}. ${txt.slice(0, 160)}`);
@@ -219,11 +239,26 @@ function openModal(item) {
   els.modalYear.textContent = item.year ? `Year: ${item.year}` : "";
   els.modalFormat.textContent = item.formats ? `Format: ${item.formats}` : "";
 
+  // ✅ Exact release link
   if (item.discogsUrl) {
     els.modalLink.href = item.discogsUrl;
+    els.modalLink.target = "_blank";
+    els.modalLink.rel = "noopener";
     els.modalLink.style.display = "inline-block";
   } else {
     els.modalLink.style.display = "none";
+  }
+
+  // ✅ Optional value link (only if modalValue exists in HTML)
+  if (els.modalValue) {
+    if (item.marketplaceUrl) {
+      els.modalValue.href = item.marketplaceUrl;
+      els.modalValue.target = "_blank";
+      els.modalValue.rel = "noopener";
+      els.modalValue.style.display = "inline-block";
+    } else {
+      els.modalValue.style.display = "none";
+    }
   }
 
   els.modal.setAttribute("aria-hidden", "false");
@@ -237,7 +272,6 @@ function closeModal() {
 
 // -------------------- GRID --------------------
 function deterministicTilt(seedStr) {
-  // tiny stable pseudo-random tilt from string
   let h = 2166136261;
   for (let i = 0; i < seedStr.length; i++) {
     h ^= seedStr.charCodeAt(i);
@@ -252,7 +286,6 @@ function renderGrid(items) {
   els.grid.innerHTML = "";
   createObserver();
 
-  // apply mode class
   els.grid.classList.toggle("collage", collageOn);
 
   const frag = document.createDocumentFragment();
@@ -262,7 +295,6 @@ function renderGrid(items) {
     tile.className = "tile";
     tile.title = `${item.artist} — ${item.title}`;
 
-    // collage tilt
     if (collageOn) {
       tile.style.setProperty("--tilt", `${deterministicTilt(String(item.id))}deg`);
     } else {
@@ -283,6 +315,8 @@ function renderGrid(items) {
 
     tile.appendChild(img);
     tile.appendChild(badge);
+
+    // tile opens modal (mobile-friendly)
     tile.addEventListener("click", () => openModal(item));
 
     frag.appendChild(tile);
@@ -458,7 +492,7 @@ function needleDropSound() {
     const bufferSize = Math.floor(audioCtx.sampleRate * 0.22);
     const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
     const noise = audioCtx.createBufferSource();
     noise.buffer = noiseBuffer;
@@ -532,7 +566,6 @@ function init() {
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
-  // Collage toggle
   if (els.viewMode) {
     els.viewMode.addEventListener("click", () => {
       collageOn = !collageOn;
@@ -551,7 +584,9 @@ function init() {
   const initialUser = getUserFromUrl();
   if (initialUser) {
     els.username.value = initialUser;
-    loadUser(initialUser).catch((err) => setStatus(String(err.message || err), ""));
+    loadUser(initialUser).catch((err) =>
+      setStatus(String(err.message || err), "")
+    );
   }
 
   els.go.addEventListener("click", async () => {
@@ -589,8 +624,8 @@ function init() {
     setStatus("Cache cleared.", "");
   });
 
-  els.modalBackdrop.addEventListener("click", closeModal);
-  els.modalClose.addEventListener("click", closeModal);
+  els.modalBackdrop?.addEventListener("click", closeModal);
+  els.modalClose?.addEventListener("click", closeModal);
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeModal();
   });
