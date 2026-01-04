@@ -110,7 +110,7 @@
               rel="noopener"
               class="drink-link"
             >
-              Buy the builder a drink <span id="beer">🍺</span>
+              Buy the builder a drink <span id="beer" aria-hidden="true">🍺</span>
             </a>
             &nbsp;•&nbsp;
             <a href="mailto:korndogrecords@gmail.com">
@@ -120,9 +120,15 @@
         </div>
       </footer>
 
-      <span id="cheersToast" class="cheers-toast" aria-hidden="true">
-        Cheers 🍻
-      </span>
+      <!-- Toast: hidden by default, only shown via JS -->
+      <span
+        id="cheersToast"
+        class="cheers-toast"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        hidden
+      ></span>
     </div>
 
     <script type="module" src="/src/main.js"></script>
