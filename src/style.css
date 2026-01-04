@@ -501,3 +501,108 @@ main{
 .hero h1 {
   margin: 0;
 }
+/* ====== PROFESSIONAL CENTERING FIX ====== */
+
+.hero {
+  width: 100%;
+  padding: 28px 16px 18px;
+}
+
+.hero-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand h1 {
+  margin: 0;
+  line-height: 1.05;
+}
+
+.brand .sub {
+  margin: 6px 0 0;
+  opacity: 0.85;
+}
+
+.controls {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.controls .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.controls .row input,
+.controls .row select,
+.controls .row button {
+  min-height: 44px;
+}
+
+.controls .row:first-child input {
+  flex: 1 1 260px;
+}
+
+.controls .row:first-child button {
+  flex: 0 0 auto;
+  min-width: 92px;
+}
+
+.controls .row:nth-child(2) input {
+  flex: 1 1 260px;
+}
+
+.controls .row:nth-child(2) select {
+  flex: 0 0 220px;
+  max-width: 220px;
+}
+
+.controls .row:nth-child(2) button {
+  flex: 0 0 auto;
+}
+
+.status {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  opacity: 0.85;
+}
+
+main {
+  width: 100%;
+}
+
+.grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 14px 16px 40px;
+}
+
+/* Footer: centered, tight, clean */
+.footer {
+  width: 100%;
+  padding: 18px 16px 26px;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.footer a {
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
