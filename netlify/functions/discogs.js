@@ -1,38 +1,72 @@
-export default async (req) => {
-  const url = new URL(req.url);
-  const path = url.searchParams.get("path");
+// netlify/functions/discogs.js
+// Server-side proxy for Discogs API so your token stays private.
 
-  if (!path) {
-    return new Response(JSON.stringify({ error: "Missing path" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
+export async function handler(event) {
+  try {
+    const token = process.env.DISCOGS_TOKEN; // <-- your Netlify env var stays THIS name
+    if (!token) {
+      return json(500, { error: "Missing DISCOGS_TOKEN on server (Netlify env var)." });
+    }
+
+    // Allow only Discogs API routes (safety)
+    const qs = event.queryStringParameters || {};
+    const username = (qs.username || "").trim();
+    const page = Number(qs.page || 1);
+    const per_page = Number(qs.per_page || 100);
+
+    // Only supporting the one endpoint your app uses:
+    // /users/:username/collection/folders/0/releases
+    if (!username) {
+      return json(400, { error: "Missing username." });
+    }
+
+    // Build Discogs URL
+    const url =
+      `https://api.discogs.com/users/${encodeURIComponent(username)}` +
+      `/collection/folders/0/releases?per_page=${encodeURIComponent(per_page)}` +
+      `&page=${encodeURIComponent(page)}` +
+      `&sort=added&sort_order=desc`;
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Discogs token=${token}`,
+        "User-Agent": "discovers-better/1.0 (+netlify)",
+        Accept: "application/json",
+      },
     });
+
+    const text = await res.text();
+    if (!res.ok) {
+      // pass through useful error details
+      return json(res.status, {
+        error: `Discogs error ${res.status}`,
+        details: text.slice(0, 500),
+      });
+    }
+
+    // Return JSON + CORS
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store",
+      },
+      body: text,
+    };
+  } catch (e) {
+    return json(500, { error: "Server function crashed.", details: String(e?.message || e) });
   }
+}
 
-  // only allow Discogs API paths
-  if (!path.startsWith("/")) {
-    return new Response(JSON.stringify({ error: "Bad path" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const discogsUrl = `https://api.discogs.com${path}`;
-
-  const res = await fetch(discogsUrl, {
+function json(statusCode, obj) {
+  return {
+    statusCode,
     headers: {
-      Authorization: `Discogs token=${process.env.DISCOGS_TOKEN}`,
-      "User-Agent": "discovers-better/1.0 (+Netlify)",
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": "no-store",
     },
-  });
-
-  const body = await res.text();
-
-  return new Response(body, {
-    status: res.status,
-    headers: {
-      "Content-Type": res.headers.get("content-type") || "application/json",
-      "Cache-Control": "public, max-age=300", // 5 min cache
-    },
-  });
-};
+    body: JSON.stringify(obj),
+  };
+}
