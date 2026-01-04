@@ -606,3 +606,17 @@ main {
 .footer a:hover {
   text-decoration: underline;
 }
+.footer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 18px 12px 26px;
+  text-align: center;
+}
+
+.footer > div {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
