@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DisCovers — Better</title>
+    <title>VinylWall</title>
   </head>
 
   <body>
@@ -11,11 +11,11 @@
       <header class="hero">
         <div class="hero-inner">
           <div class="brand">
-            <div class="logo">◼︎</div>
+            <div class="logo vinyl-spin" aria-hidden="true"></div>
             <div>
-              <h1>DisCovers</h1>
+              <h1>VinylWall</h1>
               <p class="sub">
-                Album-wall visualizer for Discogs collections. Cleaner. Faster. Sharper.
+                Drop the needle on your Discogs collection.
               </p>
             </div>
           </div>
@@ -63,54 +63,22 @@
         <div id="grid" class="grid"></div>
       </main>
 
-      <div id="modal" class="modal" aria-hidden="true">
-        <div class="modal-backdrop" id="modalBackdrop"></div>
-        <div class="modal-card" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
-          <div class="modal-body">
-            <img id="modalImg" alt="" />
-            <div class="modal-meta">
-              <div id="modalTitle" class="modal-title"></div>
-              <div id="modalArtist" class="modal-artist"></div>
-              <div id="modalYear" class="modal-year"></div>
-              <div id="modalFormat" class="modal-format"></div>
-              <a
-                id="modalLink"
-                class="modal-link"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open on Discogs
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <footer class="footer">
         <div style="text-align:center; line-height:1.6;">
           <div>
             Inspired by the original concept by
             <strong>Skye Klein</strong>.
             Reimagined and rebuilt by
-            <a
-              href="https://korndogrecords.com"
-              target="_blank"
-              rel="noopener"
-            >
-              KornDog Records
-            </a>.
+            <strong>VinylWall</strong>.
           </div>
 
           <div style="margin-top:6px;">
             <a
-              id="drinkLink"
               href="https://www.paypal.me/titansrule1215"
               target="_blank"
               rel="noopener"
-              class="drink-link"
             >
-              Buy the builder a drink <span id="beer" aria-hidden="true">🍺</span>
+              Buy the builder a drink 🍺
             </a>
             &nbsp;•&nbsp;
             <a href="mailto:korndogrecords@gmail.com">
@@ -119,16 +87,6 @@
           </div>
         </div>
       </footer>
-
-      <!-- Toast: hidden by default; JS can show it temporarily -->
-      <span
-        id="cheersToast"
-        class="cheers-toast"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        hidden
-      ></span>
     </div>
 
     <script type="module" src="/src/main.js"></script>
