@@ -3,41 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DisCovers — Better</title>
+    <title>VinylWall</title>
   </head>
 
   <body>
     <div id="app">
-      <header class="hero">
+      <header class="hero vinylwall-hero">
         <div class="hero-inner">
-          <div class="brand">
-            <div class="logo">◼︎</div>
-            <div>
-              <h1>DisCovers</h1>
-              <p class="sub">
-                Album-wall visualizer for Discogs collections. Cleaner. Faster. Sharper.
+          <div class="brand vinylwall-brand">
+            <!-- Vinyl logo (CSS draws it) -->
+            <div class="vinyl-logo" aria-hidden="true">
+              <span class="vinyl-label"></span>
+              <span class="vinyl-hole"></span>
+            </div>
+
+            <div class="brand-copy">
+              <h1 class="brand-title">VinylWall</h1>
+              <p class="sub brand-sub">
+                Turn any Discogs collection into a slick album wall. Shareable. Fast. KornDog approved.
               </p>
             </div>
           </div>
 
-          <div class="controls">
+          <div class="controls vinylwall-controls">
             <div class="row">
-              <input
-                id="username"
-                type="text"
-                placeholder="Discogs username"
-                autocomplete="off"
-              />
-              <button id="go">Load</button>
+              <input id="username" type="text" placeholder="Discogs username" autocomplete="off" />
+              <button id="go">Drop</button>
             </div>
 
             <div class="row">
-              <input
-                id="search"
-                type="text"
-                placeholder="Search artist / title…"
-                autocomplete="off"
-              />
+              <input id="search" type="text" placeholder="Search artist / title…" autocomplete="off" />
               <select id="sort">
                 <option value="added_desc">Recently added</option>
                 <option value="artist_asc">Artist A → Z</option>
@@ -48,13 +43,16 @@
 
               <button id="shuffle" class="ghost">Shuffle</button>
               <button id="clear" class="ghost">Clear cache</button>
-              <button id="shareWall" class="ghost">Share your wall</button>
+              <button id="shareWall" class="ghost">Share wall</button>
             </div>
 
             <div class="status">
-              <span id="statusText">Enter a username and hit Load.</span>
+              <span id="statusText">Enter a username and hit Drop.</span>
               <span id="countText"></span>
             </div>
+
+            <!-- token UI is intentionally gone -->
+            <div class="hint"><span id="tokenHint"></span></div>
           </div>
         </div>
       </header>
@@ -74,35 +72,20 @@
               <div id="modalArtist" class="modal-artist"></div>
               <div id="modalYear" class="modal-year"></div>
               <div id="modalFormat" class="modal-format"></div>
-              <a
-                id="modalLink"
-                class="modal-link"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open on Discogs
-              </a>
+              <a id="modalLink" class="modal-link" target="_blank" rel="noreferrer">Open on Discogs</a>
             </div>
           </div>
         </div>
       </div>
 
-      <footer class="footer">
-        <div style="text-align:center; line-height:1.6;">
-          <div>
-            Inspired by the original concept by
-            <strong>Skye Klein</strong>.
-            Rebuilt louder by
-            <a
-              href="https://korndogrecords.com"
-              target="_blank"
-              rel="noopener"
-            >
-              KornDog Records
-            </a>.
+      <footer class="footer vinylwall-footer">
+        <div class="footer-inner">
+          <div class="footer-line">
+            Inspired by the original concept by <strong>Skye Klein</strong>. Rebuilt louder by
+            <a href="https://korndogrecords.com" target="_blank" rel="noopener">KornDog Records</a>.
           </div>
 
-          <div style="margin-top:6px;">
+          <div class="footer-line">
             <a
               id="drinkLink"
               href="https://www.paypal.me/titansrule1215"
@@ -112,15 +95,21 @@
             >
               Buy the builder a drink <span id="beer" aria-hidden="true">🍺</span>
             </a>
-            &nbsp;•&nbsp;
-            <a href="mailto:korndogrecords@gmail.com">
-              korndogrecords@gmail.com
-            </a>
+            <span class="dot">•</span>
+            <a href="mailto:korndogrecords@gmail.com">korndogrecords@gmail.com</a>
           </div>
         </div>
       </footer>
 
-      <span id="cheersToast" class="cheers-toast" aria-hidden="true" hidden></span>
+      <!-- Toast: hidden by default (NOT visible until click) -->
+      <span
+        id="cheersToast"
+        class="cheers-toast"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        hidden
+      ></span>
     </div>
 
     <script type="module" src="/src/main.js"></script>
