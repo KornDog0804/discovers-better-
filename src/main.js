@@ -60,7 +60,10 @@ function readCache(username) {
 
 function writeCache(username, items) {
   try {
-    localStorage.setItem(cacheKey(username), JSON.stringify({ ts: Date.now(), items }));
+    localStorage.setItem(
+      cacheKey(username),
+      JSON.stringify({ ts: Date.now(), items })
+    );
   } catch {
     // ignore storage issues
   }
@@ -116,7 +119,10 @@ function normalizeItem(entry) {
   const discogsUrl = releaseId ? `https://www.discogs.com/release/${releaseId}` : "";
 
   return {
-    id: entry?.id ?? releaseId ?? (globalThis.crypto?.randomUUID?.() || String(Math.random())),
+    id:
+      entry?.id ??
+      releaseId ??
+      (globalThis.crypto?.randomUUID?.() || String(Math.random())),
     releaseId,
     title: bi?.title || "(Unknown Title)",
     artist: formatArtists(bi?.artists),
@@ -147,7 +153,9 @@ async function discogsFetchCollectionPage(username, page, perPage) {
     try {
       const j = JSON.parse(txt);
       throw new Error(
-        j?.error ? `${j.error}${j.details ? ` — ${j.details}` : ""}` : `Server error ${res.status}`
+        j?.error
+          ? `${j.error}${j.details ? ` — ${j.details}` : ""}`
+          : `Server error ${res.status}`
       );
     } catch {
       throw new Error(`Server error ${res.status}. ${txt.slice(0, 160)}`);
@@ -369,7 +377,9 @@ async function shareWall() {
     return;
   }
 
-  const shareUrl = `${location.origin}${location.pathname}?user=${encodeURIComponent(username)}`;
+  const shareUrl = `${location.origin}${location.pathname}?user=${encodeURIComponent(
+    username
+  )}`;
 
   const shareData = {
     title: "My Discogs Wall",
@@ -404,25 +414,33 @@ function paypalDonateUrl() {
   return u.toString();
 }
 
-// -------------------- 🍺 CHEERS FX --------------------
+// -------------------- 🍺 CHEERS FX (FIXED) --------------------
 function beerCheersFX() {
   const beer = document.getElementById("beer");
   const toast = document.getElementById("cheersToast");
 
   if (navigator.vibrate) navigator.vibrate(30);
 
+  // Beer emoji animation
   if (beer) {
     beer.classList.remove("beer-pop");
     void beer.offsetWidth; // restart animation
     beer.classList.add("beer-pop");
   }
 
+  // Toast popup (ONLY when clicked)
   if (toast) {
+    toast.textContent = "Cheers 🍻";
+    toast.hidden = false;
     toast.classList.add("show");
     toast.setAttribute("aria-hidden", "false");
-    setTimeout(() => {
+
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => {
       toast.classList.remove("show");
       toast.setAttribute("aria-hidden", "true");
+      toast.hidden = true;
+      toast.textContent = "";
     }, 900);
   }
 }
@@ -432,6 +450,15 @@ function init() {
   // Hide token UI (no nerd text)
   if (els.tokenHint) els.tokenHint.textContent = "";
   if (els.setToken) els.setToken.style.display = "none";
+
+  // FORCE-hide cheers toast on load (so it never sits bottom-left)
+  const toast = document.getElementById("cheersToast");
+  if (toast) {
+    toast.hidden = true;
+    toast.textContent = "";
+    toast.classList.remove("show");
+    toast.setAttribute("aria-hidden", "true");
+  }
 
   // Hook Share button
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
@@ -456,7 +483,9 @@ function init() {
   const initialUser = getUserFromUrl();
   if (initialUser) {
     els.username.value = initialUser;
-    loadUser(initialUser).catch((err) => setStatus(String(err.message || err), ""));
+    loadUser(initialUser).catch((err) =>
+      setStatus(String(err.message || err), "")
+    );
   }
 
   els.go.addEventListener("click", async () => {
