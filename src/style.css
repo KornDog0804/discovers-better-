@@ -484,3 +484,20 @@ main{
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+/* Fix logo overlap on mobile */
+.hero .brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero .logo {
+  flex-shrink: 0;
+  position: relative;
+  top: 0;
+  left: 0;
+}
+
+.hero h1 {
+  margin: 0;
+}
