@@ -15,7 +15,7 @@ const els = {
   tokenHint: document.getElementById("tokenHint"),
   setToken: document.getElementById("setToken"),
 
-  // NEW: Share button (must exist in HTML with id="shareWall")
+  // Share button (must exist in HTML with id="shareWall")
   shareWall: document.getElementById("shareWall"),
 
   modal: document.getElementById("modal"),
@@ -31,6 +31,12 @@ const els = {
 
 const CACHE_PREFIX = "discovers_cache_v1_";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+
+// Your PayPal email (you asked for this)
+const PAYPAL_EMAIL = "titans.rule1215@gmail.com";
+
+// Optional: default drink amount (PayPal lets them change it)
+const DEFAULT_DRINK_USD = "5.00";
 
 let allItems = [];
 let viewItems = [];
@@ -142,7 +148,11 @@ async function discogsFetchCollectionPage(username, page, perPage) {
   if (!res.ok) {
     try {
       const j = JSON.parse(txt);
-      throw new Error(j?.error ? `${j.error}${j.details ? ` — ${j.details}` : ""}` : `Server error ${res.status}`);
+      throw new Error(
+        j?.error
+          ? `${j.error}${j.details ? ` — ${j.details}` : ""}`
+          : `Server error ${res.status}`
+      );
     } catch {
       throw new Error(`Server error ${res.status}. ${txt.slice(0, 160)}`);
     }
@@ -359,7 +369,6 @@ async function shareWall() {
     return;
   }
 
-  // build a clean share URL (same page + ?user=)
   const shareUrl = `${location.origin}${location.pathname}?user=${encodeURIComponent(username)}`;
 
   const shareData = {
@@ -368,23 +377,55 @@ async function shareWall() {
     url: shareUrl,
   };
 
-  // native share (mobile)
   try {
     if (navigator.share) {
       await navigator.share(shareData);
       return;
     }
   } catch {
-    // user canceled share, do nothing
-    return;
+    return; // user canceled
   }
 
-  // fallback: copy link
   try {
     await navigator.clipboard.writeText(shareUrl);
     alert("Link copied. Paste it anywhere.");
   } catch {
     window.prompt("Copy this link:", shareUrl);
+  }
+}
+
+// -------------------- 🍺 PAYPAL DRINK LINK (EMAIL-BASED) --------------------
+// Uses PayPal "Donate" style URL with your email.
+// Note: If you later get a PayPal.me link working, that’s even cleaner.
+function paypalDrinkUrl() {
+  const base = "https://www.paypal.com/donate";
+  const u = new URL(base);
+  u.searchParams.set("business", PAYPAL_EMAIL);
+  u.searchParams.set("currency_code", "USD");
+  u.searchParams.set("amount", DEFAULT_DRINK_USD);
+  return u.toString();
+}
+
+// -------------------- 🍺 CHEERS FX --------------------
+function beerCheersFX() {
+  const beer = document.getElementById("beer");
+  const toast = document.getElementById("cheersToast");
+
+  if (navigator.vibrate) navigator.vibrate(30);
+
+  if (beer) {
+    beer.classList.remove("beer-pop");
+    void beer.offsetWidth; // restart animation
+    beer.classList.add("beer-pop");
+  }
+
+  if (toast) {
+    toast.classList.add("show");
+    toast.setAttribute("aria-hidden", "false");
+    setTimeout(() => {
+      toast.classList.remove("show");
+      toast.setAttribute("aria-hidden", "true");
+    }, 900);
   }
 }
 
@@ -396,6 +437,18 @@ function init() {
 
   // ✅ Hook Share button if it exists
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
+
+  // ✅ Hook Drink link (PayPal) if present
+  const drinkLink = document.getElementById("drinkLink");
+  if (drinkLink) {
+    // If your HTML link still points to paypal.me, this overrides it with your EMAIL donate link.
+    drinkLink.href = paypalDrinkUrl();
+
+    // Trigger cheers effect on tap/click (words OR 🍺)
+    drinkLink.addEventListener("click", () => {
+      beerCheersFX();
+    });
+  }
 
   // Auto-load from shared link
   const initialUser = getUserFromUrl();
