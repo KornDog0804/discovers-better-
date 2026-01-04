@@ -9,9 +9,9 @@
   <body>
 
     <!-- =========================
-         SPLASH SCREEN (CSS ONLY)
+         SPLASH SCREEN
          ========================= -->
-    <div class="splash" aria-hidden="true">
+    <div class="splash" aria-hidden="false">
       <div class="splash-inner">
         <div class="splash-ring"></div>
         <div class="splash-logo" aria-hidden="true"></div>
@@ -128,6 +128,16 @@
         </div>
       </footer>
     </div>
+
+    <!-- =========================
+         SPLASH EXIT CONTROL
+         ========================= -->
+    <script>
+      // Gatefold-style exit after 1.5s
+      setTimeout(() => {
+        document.body.classList.add("splash-done");
+      }, 1500);
+    </script>
 
     <script type="module" src="/src/main.js"></script>
   </body>
