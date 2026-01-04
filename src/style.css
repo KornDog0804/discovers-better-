@@ -457,3 +457,30 @@ main{
   display:inline-block;
   color: rgba(234,234,242,.9);
 }
+/* Vinyl logo */
+.logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #ddd 0 6%, #333 7% 10%, transparent 11%),
+    conic-gradient(
+      #5b2cff,
+      #00c3ff,
+      #5b2cff,
+      #00c3ff,
+      #5b2cff
+    );
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.15),
+    0 10px 30px rgba(0,0,0,.5);
+}
+
+/* Spin only while loading */
+.vinyl-spin.loading {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
