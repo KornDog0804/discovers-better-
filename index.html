@@ -4,25 +4,119 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VinylWall</title>
+
+    <!-- Core styles -->
+    <link rel="stylesheet" href="/src/style.css" />
+
+    <!-- Splash control -->
+    <style>
+      body {
+        margin: 0;
+        background: #0b0b0e;
+        color: #fff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        overflow-x: hidden;
+      }
+
+      /* Splash visible by default */
+      .splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(
+          circle at center,
+          #141420 0%,
+          #0b0b0e 70%
+        );
+        transition: opacity 1.2s ease, transform 1.2s ease;
+      }
+
+      .splash-inner {
+        text-align: center;
+        padding: 32px;
+        max-width: 420px;
+        backdrop-filter: blur(14px);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+      }
+
+      .splash-ring {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 18px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at center,
+          #9b87ff 0%,
+          #3a2fff 35%,
+          #111 70%
+        );
+        box-shadow: 0 0 40px rgba(155, 135, 255, 0.6);
+        animation: spin 6s linear infinite;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .splash-kicker {
+        letter-spacing: 0.25em;
+        font-size: 12px;
+        opacity: 0.7;
+        margin-bottom: 6px;
+      }
+
+      .splash-name {
+        font-size: 34px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      .splash-tag {
+        font-size: 15px;
+        opacity: 0.85;
+        line-height: 1.4;
+      }
+
+      .splash-hint {
+        margin-top: 18px;
+        font-size: 13px;
+        opacity: 0.6;
+      }
+
+      /* When splash is done */
+      body.splash-done .splash {
+        opacity: 0;
+        transform: scale(1.05);
+        pointer-events: none;
+      }
+    </style>
   </head>
 
   <body>
-
     <!-- =========================
          SPLASH SCREEN
          ========================= -->
-    <div class="splash" aria-hidden="false">
+    <div class="splash" aria-hidden="true">
       <div class="splash-inner">
         <div class="splash-ring"></div>
-        <div class="splash-logo" aria-hidden="true"></div>
 
-        <div class="splash-title">
-          <div class="splash-kicker">DROP THE NEEDLE</div>
-          <div class="splash-name">VinylWall</div>
-          <div class="splash-tag">
-            Your collection isn’t data.<br />
-            It’s taste.
-          </div>
+        <div class="splash-kicker">DROP THE NEEDLE</div>
+        <div class="splash-name">VinylWall</div>
+
+        <div class="splash-tag">
+          Your collection isn’t data.<br />
+          It’s taste.
         </div>
 
         <div class="splash-hint">
@@ -30,10 +124,6 @@
         </div>
       </div>
     </div>
-    <!-- =========================
-         END SPLASH
-         ========================= -->
-
 
     <!-- =========================
          MAIN APP
@@ -130,15 +220,15 @@
     </div>
 
     <!-- =========================
-         SPLASH EXIT CONTROL
+         SPLASH TIMING (3.5s)
          ========================= -->
     <script>
-      // Gatefold-style exit after 1.5s
       setTimeout(() => {
         document.body.classList.add("splash-done");
-      }, 1500);
+      }, 3500);
     </script>
 
+    <!-- App logic -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
