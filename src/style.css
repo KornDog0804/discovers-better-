@@ -330,3 +330,9 @@ main{
 
 /* Hide the ◼︎ character */
 .logo{ color: transparent; }
+@media (max-width: 520px){
+  .hero-inner{ padding:14px 12px; gap:12px; }
+  h1{ font-size:20px; }
+  .sub{ font-size:12px; }
+  .controls{ padding:10px; }
+}
