@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VinylWall — KornDog</title>
+    <title>DisCovers — Better</title>
   </head>
 
   <body>
@@ -11,15 +11,12 @@
       <header class="hero">
         <div class="hero-inner">
           <div class="brand">
-            <!-- Turntable mark (record + tonearm) -->
-            <div class="turntable" aria-hidden="true">
-              <div class="logo"></div>
-              <div class="tonearm"></div>
-            </div>
-
-            <div class="brand-text">
-              <h1>VinylWall</h1>
-              <p class="sub">Drop the needle on your Discogs.</p>
+            <div class="logo">◼︎</div>
+            <div>
+              <h1>DisCovers</h1>
+              <p class="sub">
+                Album-wall visualizer for Discogs collections. Cleaner. Faster. Sharper.
+              </p>
             </div>
           </div>
 
@@ -50,7 +47,6 @@
               </select>
 
               <button id="shuffle" class="ghost">Shuffle</button>
-              <button id="viewMode" class="ghost" title="Toggle Collage Mode">Collage</button>
               <button id="clear" class="ghost">Clear cache</button>
               <button id="shareWall" class="ghost">Share your wall</button>
             </div>
@@ -78,7 +74,12 @@
               <div id="modalArtist" class="modal-artist"></div>
               <div id="modalYear" class="modal-year"></div>
               <div id="modalFormat" class="modal-format"></div>
-              <a id="modalLink" class="modal-link" target="_blank" rel="noreferrer">
+              <a
+                id="modalLink"
+                class="modal-link"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Open on Discogs
               </a>
             </div>
@@ -89,9 +90,14 @@
       <footer class="footer">
         <div style="text-align:center; line-height:1.6;">
           <div>
-            Inspired by the original concept of <strong>Skye Klein</strong>.
-            KornDogged out by
-            <a href="https://korndogrecords.com" target="_blank" rel="noopener">
+            Inspired by the original concept by
+            <strong>Skye Klein</strong>.
+            Reimagined and rebuilt by
+            <a
+              href="https://korndogrecords.com"
+              target="_blank"
+              rel="noopener"
+            >
               KornDog Records
             </a>.
           </div>
@@ -107,11 +113,14 @@
               Buy the builder a drink <span id="beer" aria-hidden="true">🍺</span>
             </a>
             &nbsp;•&nbsp;
-            <a href="mailto:korndogrecords@gmail.com">korndogrecords@gmail.com</a>
+            <a href="mailto:korndogrecords@gmail.com">
+              korndogrecords@gmail.com
+            </a>
           </div>
         </div>
       </footer>
 
+      <!-- Toast: hidden by default; JS can show it temporarily -->
       <span
         id="cheersToast"
         class="cheers-toast"
