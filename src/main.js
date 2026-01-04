@@ -38,7 +38,7 @@ let viewItems = [];
 let observer = null;
 let collageOn = false;
 
-// -------------------- LOADING STATE (spin + tonearm) --------------------
+// -------------------- LOADING STATE --------------------
 function setLoading(on) {
   document.body.classList.toggle("is-loading", !!on);
   if (els.go) els.go.disabled = !!on;
@@ -107,17 +107,12 @@ function formatFormats(formatsArr) {
     .join(" • ");
 }
 
-/**
- * FIXED HERE ✅
- * Prefer Discogs "uri" from the collection item when available.
- * uri is usually "/release/12345" so we must prefix with "https://www.discogs.com"
- * Otherwise we fallback to /release/{id}
- */
+// -------------------- NORMALIZE (Discogs link fix) --------------------
 function normalizeItem(entry) {
   const bi = entry?.basic_information || {};
   const releaseId = bi?.id || null;
 
-  const uri = entry?.uri || "";
+  const uri = entry?.uri || ""; // usually "/release/12345"
   const discogsUrl = uri
     ? (uri.startsWith("http") ? uri : `https://www.discogs.com${uri}`)
     : (releaseId ? `https://www.discogs.com/release/${releaseId}` : "");
@@ -220,31 +215,57 @@ function createObserver() {
   );
 }
 
-// -------------------- MODAL --------------------
-function openModal(item) {
-  els.modalImg.src = item.cover || "";
-  els.modalImg.alt = `${item.artist} — ${item.title}`;
-  els.modalTitle.textContent = item.title || "";
-  els.modalArtist.textContent = item.artist || "";
-  els.modalYear.textContent = item.year ? `Year: ${item.year}` : "";
-  els.modalFormat.textContent = item.formats ? `Format: ${item.formats}` : "";
+// -------------------- OPEN DISCOGS RELIABLY --------------------
+function openDiscogs(url) {
+  if (!url) return;
 
-  if (item.discogsUrl) {
-    els.modalLink.href = item.discogsUrl;
-    els.modalLink.target = "_blank";
-    els.modalLink.rel = "noopener";
-    els.modalLink.style.display = "inline-block";
-  } else {
-    els.modalLink.style.display = "none";
+  // In-app browsers can be picky; window.open from a real click is usually safest.
+  try {
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if (w) return;
+  } catch {}
+
+  // Fallback
+  try {
+    location.href = url;
+  } catch {}
+}
+
+// -------------------- MODAL --------------------
+let currentModalUrl = "";
+
+function openModal(item) {
+  currentModalUrl = item.discogsUrl || "";
+
+  if (els.modalImg) {
+    els.modalImg.src = item.cover || "";
+    els.modalImg.alt = `${item.artist} — ${item.title}`;
+  }
+  if (els.modalTitle) els.modalTitle.textContent = item.title || "";
+  if (els.modalArtist) els.modalArtist.textContent = item.artist || "";
+  if (els.modalYear) els.modalYear.textContent = item.year ? `Year: ${item.year}` : "";
+  if (els.modalFormat) els.modalFormat.textContent = item.formats ? `Format: ${item.formats}` : "";
+
+  if (els.modalLink) {
+    if (currentModalUrl) {
+      els.modalLink.href = currentModalUrl;
+      els.modalLink.textContent = "Open on Discogs ↗";
+      els.modalLink.style.display = "inline-block";
+    } else {
+      els.modalLink.style.display = "none";
+    }
   }
 
-  els.modal.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
+  if (els.modal) {
+    els.modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
 }
 
 function closeModal() {
-  els.modal.setAttribute("aria-hidden", "true");
+  if (els.modal) els.modal.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
+  currentModalUrl = "";
 }
 
 // -------------------- GRID --------------------
@@ -260,6 +281,7 @@ function deterministicTilt(seedStr) {
 }
 
 function renderGrid(items) {
+  if (!els.grid) return;
   els.grid.innerHTML = "";
   createObserver();
 
@@ -292,6 +314,7 @@ function renderGrid(items) {
 
     tile.appendChild(img);
     tile.appendChild(badge);
+
     tile.addEventListener("click", () => openModal(item));
 
     frag.appendChild(tile);
@@ -303,7 +326,7 @@ function renderGrid(items) {
 
 // -------------------- FILTERS/SORT --------------------
 function applyFilters() {
-  const q = (els.search.value || "").trim().toLowerCase();
+  const q = (els.search?.value || "").trim().toLowerCase();
   let items = allItems.slice();
 
   if (q) {
@@ -314,7 +337,7 @@ function applyFilters() {
     );
   }
 
-  const sort = els.sort.value;
+  const sort = els.sort?.value || "added_desc";
   const byStr = (a, b, ka, kb) =>
     ka.localeCompare(kb, undefined, { sensitivity: "base" }) ||
     String(a.id).localeCompare(String(b.id));
@@ -467,7 +490,7 @@ function needleDropSound() {
     const bufferSize = Math.floor(audioCtx.sampleRate * 0.22);
     const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
     const noise = audioCtx.createBufferSource();
     noise.buffer = noiseBuffer;
@@ -541,12 +564,33 @@ function init() {
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
-  // Collage toggle (only if you actually have the button in HTML)
+  // Collage toggle (only if button exists)
   if (els.viewMode) {
     els.viewMode.addEventListener("click", () => {
       collageOn = !collageOn;
       els.viewMode.textContent = collageOn ? "Grid" : "Collage";
       if (allItems.length) applyFilters();
+    });
+  }
+
+  // Make modal link ALWAYS open (even in picky mobile browsers)
+  if (els.modalLink) {
+    els.modalLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const href = els.modalLink.href || currentModalUrl;
+      openDiscogs(href);
+    });
+  }
+
+  // Bonus: tapping the cover opens Discogs too
+  if (els.modalImg) {
+    els.modalImg.addEventListener("click", (e) => {
+      // Only if we have a URL
+      if (!currentModalUrl) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openDiscogs(currentModalUrl);
     });
   }
 
@@ -558,45 +602,57 @@ function init() {
   }
 
   const initialUser = getUserFromUrl();
-  if (initialUser) {
+  if (initialUser && els.username) {
     els.username.value = initialUser;
     loadUser(initialUser).catch((err) => setStatus(String(err.message || err), ""));
   }
 
-  els.go.addEventListener("click", async () => {
-    const username = els.username.value.trim();
-    if (!username) return;
-    setUserInUrl(username);
-    try {
-      await loadUser(username);
-    } catch (e) {
-      setStatus(String(e.message || e), "");
-    }
-  });
+  if (els.go) {
+    els.go.addEventListener("click", async () => {
+      const username = (els.username?.value || "").trim();
+      if (!username) return;
+      setUserInUrl(username);
+      try {
+        await loadUser(username);
+      } catch (e) {
+        setStatus(String(e.message || e), "");
+      }
+    });
+  }
 
-  els.username.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") els.go.click();
-  });
+  if (els.username && els.go) {
+    els.username.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") els.go.click();
+    });
+  }
 
-  els.search.addEventListener("input", () => {
-    if (!allItems.length) return;
-    applyFilters();
-  });
+  if (els.search) {
+    els.search.addEventListener("input", () => {
+      if (!allItems.length) return;
+      applyFilters();
+    });
+  }
 
-  els.sort.addEventListener("change", () => {
-    if (!allItems.length) return;
-    applyFilters();
-  });
+  if (els.sort) {
+    els.sort.addEventListener("change", () => {
+      if (!allItems.length) return;
+      applyFilters();
+    });
+  }
 
-  els.shuffle.addEventListener("click", () => {
-    if (!viewItems.length) return;
-    shuffleCurrent();
-  });
+  if (els.shuffle) {
+    els.shuffle.addEventListener("click", () => {
+      if (!viewItems.length) return;
+      shuffleCurrent();
+    });
+  }
 
-  els.clear.addEventListener("click", () => {
-    clearAllCaches();
-    setStatus("Cache cleared.", "");
-  });
+  if (els.clear) {
+    els.clear.addEventListener("click", () => {
+      clearAllCaches();
+      setStatus("Cache cleared.", "");
+    });
+  }
 
   if (els.modalBackdrop) els.modalBackdrop.addEventListener("click", closeModal);
   if (els.modalClose) els.modalClose.addEventListener("click", closeModal);
