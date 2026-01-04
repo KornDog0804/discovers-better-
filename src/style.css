@@ -864,3 +864,8 @@ main {
     transform: none !important;
   }
 }
+body.splash-done .splash {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s ease;
+}
