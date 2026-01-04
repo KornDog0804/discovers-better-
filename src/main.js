@@ -11,11 +11,8 @@ const els = {
   countText: document.getElementById("countText"),
   grid: document.getElementById("grid"),
 
-  // optional UI in HTML
   tokenHint: document.getElementById("tokenHint"),
   setToken: document.getElementById("setToken"),
-
-  // Share button (id="shareWall")
   shareWall: document.getElementById("shareWall"),
 
   modal: document.getElementById("modal"),
@@ -32,7 +29,6 @@ const els = {
 const CACHE_PREFIX = "discovers_cache_v1_";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
 
-// Your PayPal email (fallback only if HTML doesn't provide a paypal.me link)
 const PAYPAL_EMAIL = "titans.rule1215@gmail.com";
 const DEFAULT_DRINK_USD = "5.00";
 
@@ -44,7 +40,6 @@ let observer = null;
 function cacheKey(username) {
   return `${CACHE_PREFIX}${username.toLowerCase()}`;
 }
-
 function readCache(username) {
   try {
     const raw = localStorage.getItem(cacheKey(username));
@@ -57,23 +52,14 @@ function readCache(username) {
     return null;
   }
 }
-
 function writeCache(username, items) {
   try {
-    localStorage.setItem(
-      cacheKey(username),
-      JSON.stringify({ ts: Date.now(), items })
-    );
-  } catch {
-    // ignore storage issues
-  }
+    localStorage.setItem(cacheKey(username), JSON.stringify({ ts: Date.now(), items }));
+  } catch {}
 }
-
 function clearAllCaches() {
   const keys = Object.keys(localStorage);
-  for (const k of keys) {
-    if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
-  }
+  for (const k of keys) if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
 }
 
 // -------------------- UI HELPERS --------------------
@@ -81,7 +67,6 @@ function setStatus(text, count = "") {
   if (els.statusText) els.statusText.textContent = text;
   if (els.countText) els.countText.textContent = count;
 }
-
 function escapeHtml(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -96,7 +81,6 @@ function formatArtists(artistsArr) {
   if (!Array.isArray(artistsArr)) return "";
   return artistsArr.map((a) => a?.name).filter(Boolean).join(", ");
 }
-
 function formatFormats(formatsArr) {
   if (!Array.isArray(formatsArr)) return "";
   return formatsArr
@@ -107,22 +91,12 @@ function formatFormats(formatsArr) {
     })
     .join(" • ");
 }
-
-/**
- * normalizeItem:
- * - Uses release id to build a correct Discogs web URL:
- *   https://www.discogs.com/release/{id}
- */
 function normalizeItem(entry) {
   const bi = entry?.basic_information || {};
   const releaseId = bi?.id || null;
   const discogsUrl = releaseId ? `https://www.discogs.com/release/${releaseId}` : "";
-
   return {
-    id:
-      entry?.id ??
-      releaseId ??
-      (globalThis.crypto?.randomUUID?.() || String(Math.random())),
+    id: entry?.id ?? releaseId ?? (globalThis.crypto?.randomUUID?.() || String(Math.random())),
     releaseId,
     title: bi?.title || "(Unknown Title)",
     artist: formatArtists(bi?.artists),
@@ -134,11 +108,7 @@ function normalizeItem(entry) {
   };
 }
 
-/**
- * Server-side Discogs fetch via Netlify Function (NO TOKEN IN BROWSER)
- * Calls:
- *   /.netlify/functions/discogs?username=...&page=...&per_page=...
- */
+// -------------------- DISCOGS FETCH --------------------
 async function discogsFetchCollectionPage(username, page, perPage) {
   const url =
     `/.netlify/functions/discogs?username=${encodeURIComponent(username)}` +
@@ -153,15 +123,12 @@ async function discogsFetchCollectionPage(username, page, perPage) {
     try {
       const j = JSON.parse(txt);
       throw new Error(
-        j?.error
-          ? `${j.error}${j.details ? ` — ${j.details}` : ""}`
-          : `Server error ${res.status}`
+        j?.error ? `${j.error}${j.details ? ` — ${j.details}` : ""}` : `Server error ${res.status}`
       );
     } catch {
       throw new Error(`Server error ${res.status}. ${txt.slice(0, 160)}`);
     }
   }
-
   return JSON.parse(txt);
 }
 
@@ -175,7 +142,6 @@ async function fetchAllCollection(username) {
     setStatus(`Loading… page ${page} of ${pages}`, "");
     let json;
 
-    // basic retry with backoff for 429s
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
         json = await discogsFetchCollectionPage(username, page, perPage);
@@ -208,7 +174,6 @@ function destroyObserver() {
   if (observer) observer.disconnect();
   observer = null;
 }
-
 function createObserver() {
   destroyObserver();
   observer = new IntersectionObserver(
@@ -245,7 +210,6 @@ function openModal(item) {
   els.modal.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
 }
-
 function closeModal() {
   els.modal.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
@@ -277,7 +241,6 @@ function renderGrid(items) {
 
     tile.appendChild(img);
     tile.appendChild(badge);
-
     tile.addEventListener("click", () => openModal(item));
 
     frag.appendChild(tile);
@@ -301,7 +264,6 @@ function applyFilters() {
   }
 
   const sort = els.sort.value;
-
   const byStr = (a, b, ka, kb) =>
     ka.localeCompare(kb, undefined, { sensitivity: "base" }) ||
     String(a.id).localeCompare(String(b.id));
@@ -314,7 +276,6 @@ function applyFilters() {
     if (sort === "year_desc") return safeYear(b.year) - safeYear(a.year);
     if (sort === "year_asc") return safeYear(a.year) - safeYear(b.year);
 
-    // added_desc default
     const da = a.dateAdded ? Date.parse(a.dateAdded) : 0;
     const db = b.dateAdded ? Date.parse(b.dateAdded) : 0;
     return db - da;
@@ -336,32 +297,11 @@ function shuffleCurrent() {
   setStatus("Shuffled.", `${viewItems.length} shown`);
 }
 
-// -------------------- LOAD USER --------------------
-async function loadUser(username) {
-  if (!username) return;
-
-  const cached = readCache(username);
-  if (cached) {
-    allItems = cached;
-    setStatus("Loaded.", `${allItems.length} total`);
-    applyFilters();
-    return;
-  }
-
-  setStatus("Contacting Discogs…", "");
-  const items = await fetchAllCollection(username);
-  allItems = items;
-  writeCache(username, items);
-  setStatus("Loaded.", `${items.length} total`);
-  applyFilters();
-}
-
 // -------------------- URL PARAMS (shareable) --------------------
 function getUserFromUrl() {
   const u = new URL(location.href);
   return (u.searchParams.get("user") || "").trim();
 }
-
 function setUserInUrl(username) {
   const u = new URL(location.href);
   if (username) u.searchParams.set("user", username);
@@ -377,13 +317,11 @@ async function shareWall() {
     return;
   }
 
-  const shareUrl = `${location.origin}${location.pathname}?user=${encodeURIComponent(
-    username
-  )}`;
+  const shareUrl = `${location.origin}${location.pathname}?user=${encodeURIComponent(username)}`;
 
   const shareData = {
-    title: "My Discogs Wall",
-    text: `Check out my Discogs wall (${username}).`,
+    title: "My VinylWall",
+    text: `Drop the needle on my Discogs wall (${username}).`,
     url: shareUrl,
   };
 
@@ -393,7 +331,7 @@ async function shareWall() {
       return;
     }
   } catch {
-    return; // user canceled
+    return;
   }
 
   try {
@@ -404,7 +342,7 @@ async function shareWall() {
   }
 }
 
-// -------------------- 🍺 PAYPAL FALLBACK (email donate link) --------------------
+// -------------------- PAYPAL FALLBACK --------------------
 function paypalDonateUrl() {
   const base = "https://www.paypal.com/donate";
   const u = new URL(base);
@@ -414,78 +352,163 @@ function paypalDonateUrl() {
   return u.toString();
 }
 
-// -------------------- 🍺 CHEERS FX (FIXED) --------------------
+// -------------------- 🍺 CHEERS FX (ONLY on click) --------------------
 function beerCheersFX() {
   const beer = document.getElementById("beer");
   const toast = document.getElementById("cheersToast");
 
   if (navigator.vibrate) navigator.vibrate(30);
 
-  // Beer emoji animation
   if (beer) {
     beer.classList.remove("beer-pop");
-    void beer.offsetWidth; // restart animation
+    void beer.offsetWidth;
     beer.classList.add("beer-pop");
   }
 
-  // Toast popup (ONLY when clicked)
   if (toast) {
     toast.textContent = "Cheers 🍻";
-    toast.hidden = false;
+    toast.hidden = false;            // <-- key: never visible unless here
     toast.classList.add("show");
-    toast.setAttribute("aria-hidden", "false");
 
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => {
+    setTimeout(() => {
       toast.classList.remove("show");
-      toast.setAttribute("aria-hidden", "true");
-      toast.hidden = true;
-      toast.textContent = "";
+      setTimeout(() => {
+        toast.hidden = true;
+        toast.textContent = "";
+      }, 250);
     }, 900);
   }
 }
 
+// -------------------- 🎧 NEEDLE DROP SOUND (WebAudio) --------------------
+let audioCtx = null;
+
+function needleDropSound() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+
+    audioCtx = audioCtx || new Ctx();
+
+    const now = audioCtx.currentTime;
+
+    // master
+    const master = audioCtx.createGain();
+    master.gain.setValueAtTime(0.0, now);
+    master.gain.linearRampToValueAtTime(0.9, now + 0.01);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+    master.connect(audioCtx.destination);
+
+    // quick "thump" (needle drop impact)
+    const thump = audioCtx.createOscillator();
+    thump.type = "sine";
+    thump.frequency.setValueAtTime(120, now);
+    thump.frequency.exponentialRampToValueAtTime(55, now + 0.08);
+
+    const thumpGain = audioCtx.createGain();
+    thumpGain.gain.setValueAtTime(0.0, now);
+    thumpGain.gain.linearRampToValueAtTime(0.55, now + 0.005);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+    thump.connect(thumpGain);
+    thumpGain.connect(master);
+    thump.start(now);
+    thump.stop(now + 0.13);
+
+    // vinyl "static" burst
+    const bufferSize = Math.floor(audioCtx.sampleRate * 0.22);
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const hp = audioCtx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.setValueAtTime(2500, now);
+
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(7500, now);
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.0, now);
+    noiseGain.gain.linearRampToValueAtTime(0.75, now + 0.01);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+
+    noise.connect(hp);
+    hp.connect(lp);
+    lp.connect(noiseGain);
+    noiseGain.connect(master);
+
+    noise.start(now);
+    noise.stop(now + 0.23);
+
+    // tiny "motor" ramp (super subtle)
+    const hum = audioCtx.createOscillator();
+    hum.type = "sine";
+    hum.frequency.setValueAtTime(40, now);
+    const humGain = audioCtx.createGain();
+    humGain.gain.setValueAtTime(0.0, now);
+    humGain.gain.linearRampToValueAtTime(0.12, now + 0.02);
+    humGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+    hum.connect(humGain);
+    humGain.connect(master);
+    hum.start(now);
+    hum.stop(now + 0.36);
+  } catch {
+    // no-op
+  }
+}
+
+// -------------------- LOAD USER --------------------
+async function loadUser(username) {
+  if (!username) return;
+
+  const cached = readCache(username);
+  if (cached) {
+    allItems = cached;
+    setStatus("Loaded.", `${allItems.length} total`);
+    applyFilters();
+
+    // needle drop when albums are ready
+    needleDropSound();
+    return;
+  }
+
+  setStatus("Contacting Discogs…", "");
+  const items = await fetchAllCollection(username);
+  allItems = items;
+  writeCache(username, items);
+  setStatus("Loaded.", `${items.length} total`);
+  applyFilters();
+
+  // needle drop when albums are ready
+  needleDropSound();
+}
+
 // -------------------- INIT --------------------
 function init() {
-  // Hide token UI (no nerd text)
   if (els.tokenHint) els.tokenHint.textContent = "";
   if (els.setToken) els.setToken.style.display = "none";
 
-  // FORCE-hide cheers toast on load (so it never sits bottom-left)
-  const toast = document.getElementById("cheersToast");
-  if (toast) {
-    toast.hidden = true;
-    toast.textContent = "";
-    toast.classList.remove("show");
-    toast.setAttribute("aria-hidden", "true");
-  }
-
-  // Hook Share button
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
-  // Hook Drink link: DO NOT overwrite paypal.me if HTML already has it.
   const drinkLink = document.getElementById("drinkLink");
   if (drinkLink) {
     const href = String(drinkLink.getAttribute("href") || "").trim();
+    if (!href || href === "#") drinkLink.setAttribute("href", paypalDonateUrl());
 
-    // If for some reason href is missing, set a safe fallback
-    if (!href || href === "#") {
-      drinkLink.setAttribute("href", paypalDonateUrl());
-    }
-
-    // Cheers FX on tap/click (words OR 🍺)
     drinkLink.addEventListener("click", () => {
       beerCheersFX();
     });
   }
 
-  // Auto-load from shared link
   const initialUser = getUserFromUrl();
   if (initialUser) {
     els.username.value = initialUser;
-    loadUser(initialUser).catch((err) =>
-      setStatus(String(err.message || err), "")
-    );
+    loadUser(initialUser).catch((err) => setStatus(String(err.message || err), ""));
   }
 
   els.go.addEventListener("click", async () => {
@@ -524,7 +547,6 @@ function init() {
     setStatus("Cache cleared.", "");
   });
 
-  // modal close
   els.modalBackdrop.addEventListener("click", closeModal);
   els.modalClose.addEventListener("click", closeModal);
   window.addEventListener("keydown", (e) => {
