@@ -11,9 +11,12 @@ const els = {
   countText: document.getElementById("countText"),
   grid: document.getElementById("grid"),
 
-  // keep these ids if they exist in your HTML; we’ll gracefully handle if not
+  // optional UI in HTML
   tokenHint: document.getElementById("tokenHint"),
   setToken: document.getElementById("setToken"),
+
+  // NEW: Share button (must exist in HTML with id="shareWall")
+  shareWall: document.getElementById("shareWall"),
 
   modal: document.getElementById("modal"),
   modalBackdrop: document.getElementById("modalBackdrop"),
@@ -33,6 +36,7 @@ let allItems = [];
 let viewItems = [];
 let observer = null;
 
+// -------------------- CACHE --------------------
 function cacheKey(username) {
   return `${CACHE_PREFIX}${username.toLowerCase()}`;
 }
@@ -65,40 +69,50 @@ function clearAllCaches() {
   }
 }
 
+// -------------------- UI HELPERS --------------------
 function setStatus(text, count = "") {
-  els.statusText.textContent = text;
-  els.countText.textContent = count;
+  if (els.statusText) els.statusText.textContent = text;
+  if (els.countText) els.countText.textContent = count;
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+// -------------------- FORMATTERS --------------------
 function formatArtists(artistsArr) {
   if (!Array.isArray(artistsArr)) return "";
-  return artistsArr.map(a => a?.name).filter(Boolean).join(", ");
+  return artistsArr.map((a) => a?.name).filter(Boolean).join(", ");
 }
 
 function formatFormats(formatsArr) {
   if (!Array.isArray(formatsArr)) return "";
-  return formatsArr.map(f => {
-    const desc = Array.isArray(f.descriptions) ? f.descriptions.join(", ") : "";
-    const qty = f.qty ? `${f.qty}× ` : "";
-    return `${qty}${f.name}${desc ? ` (${desc})` : ""}`.trim();
-  }).join(" • ");
+  return formatsArr
+    .map((f) => {
+      const desc = Array.isArray(f.descriptions) ? f.descriptions.join(", ") : "";
+      const qty = f.qty ? `${f.qty}× ` : "";
+      return `${qty}${f.name}${desc ? ` (${desc})` : ""}`.trim();
+    })
+    .join(" • ");
 }
 
 /**
- * FIXED normalizeItem:
- * - Uses the release id to build a correct Discogs web URL:
+ * normalizeItem:
+ * - Uses release id to build a correct Discogs web URL:
  *   https://www.discogs.com/release/{id}
- * - Avoids the old resource_url swap that can break and 404.
  */
 function normalizeItem(entry) {
   const bi = entry?.basic_information || {};
-
-  // Discogs release ID lives on basic_information.id
   const releaseId = bi?.id || null;
   const discogsUrl = releaseId ? `https://www.discogs.com/release/${releaseId}` : "";
 
   return {
-    id: entry?.id ?? releaseId ?? crypto.randomUUID(),
+    id: entry?.id ?? releaseId ?? (globalThis.crypto?.randomUUID?.() || String(Math.random())),
     releaseId,
     title: bi?.title || "(Unknown Title)",
     artist: formatArtists(bi?.artists),
@@ -126,7 +140,6 @@ async function discogsFetchCollectionPage(username, page, perPage) {
   if (res.status === 429) throw new Error("Rate limited (429).");
   const txt = await res.text().catch(() => "");
   if (!res.ok) {
-    // try to parse function error json
     try {
       const j = JSON.parse(txt);
       throw new Error(j?.error ? `${j.error}${j.details ? ` — ${j.details}` : ""}` : `Server error ${res.status}`);
@@ -146,7 +159,6 @@ async function fetchAllCollection(username) {
 
   while (page <= pages) {
     setStatus(`Loading… page ${page} of ${pages}`, "");
-
     let json;
 
     // basic retry with backoff for 429s
@@ -159,7 +171,7 @@ async function fetchAllCollection(username) {
         if (msg.includes("429")) {
           const wait = 900 * (attempt + 1);
           setStatus(`Discogs is throttling. Waiting ${wait}ms…`, "");
-          await new Promise(r => setTimeout(r, wait));
+          await new Promise((r) => setTimeout(r, wait));
           continue;
         }
         throw e;
@@ -177,6 +189,7 @@ async function fetchAllCollection(username) {
   return out;
 }
 
+// -------------------- LAZY IMAGE OBSERVER --------------------
 function destroyObserver() {
   if (observer) observer.disconnect();
   observer = null;
@@ -184,18 +197,22 @@ function destroyObserver() {
 
 function createObserver() {
   destroyObserver();
-  observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      const img = entry.target;
-      const src = img.dataset.src;
-      if (src) img.src = src;
-      img.removeAttribute("data-src");
-      observer.unobserve(img);
-    }
-  }, { rootMargin: "400px" });
+  observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) img.src = src;
+        img.removeAttribute("data-src");
+        observer.unobserve(img);
+      }
+    },
+    { rootMargin: "400px" }
+  );
 }
 
+// -------------------- MODAL --------------------
 function openModal(item) {
   els.modalImg.src = item.cover || "";
   els.modalImg.alt = `${item.artist} — ${item.title}`;
@@ -220,15 +237,7 @@ function closeModal() {
   document.body.style.overflow = "";
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
+// -------------------- GRID --------------------
 function renderGrid(items) {
   els.grid.innerHTML = "";
   createObserver();
@@ -264,28 +273,30 @@ function renderGrid(items) {
   els.grid.appendChild(frag);
 }
 
+// -------------------- FILTERS/SORT --------------------
 function applyFilters() {
   const q = (els.search.value || "").trim().toLowerCase();
   let items = allItems.slice();
 
   if (q) {
-    items = items.filter(it =>
-      (it.title || "").toLowerCase().includes(q) ||
-      (it.artist || "").toLowerCase().includes(q)
+    items = items.filter(
+      (it) => (it.title || "").toLowerCase().includes(q) || (it.artist || "").toLowerCase().includes(q)
     );
   }
 
   const sort = els.sort.value;
 
-  const byStr = (a,b,ka,kb) => (ka.localeCompare(kb, undefined, { sensitivity:"base" }) || String(a.id).localeCompare(String(b.id)));
-  const safeYear = (y) => (typeof y === "number" ? y : (parseInt(y,10) || 0));
+  const byStr = (a, b, ka, kb) =>
+    ka.localeCompare(kb, undefined, { sensitivity: "base" }) || String(a.id).localeCompare(String(b.id));
+  const safeYear = (y) => (typeof y === "number" ? y : parseInt(y, 10) || 0);
 
-  items.sort((a,b) => {
-    if (sort === "artist_asc") return byStr(a,b,(a.artist||""),(b.artist||""));
-    if (sort === "title_asc") return byStr(a,b,(a.title||""),(b.title||""));
+  items.sort((a, b) => {
+    if (sort === "artist_asc") return byStr(a, b, a.artist || "", b.artist || "");
+    if (sort === "title_asc") return byStr(a, b, a.title || "", b.title || "");
     if (sort === "year_desc") return safeYear(b.year) - safeYear(a.year);
     if (sort === "year_asc") return safeYear(a.year) - safeYear(b.year);
 
+    // added_desc default
     const da = a.dateAdded ? Date.parse(a.dateAdded) : 0;
     const db = b.dateAdded ? Date.parse(b.dateAdded) : 0;
     return db - da;
@@ -307,13 +318,14 @@ function shuffleCurrent() {
   setStatus("Shuffled.", `${viewItems.length} shown`);
 }
 
+// -------------------- LOAD USER --------------------
 async function loadUser(username) {
   if (!username) return;
 
   const cached = readCache(username);
   if (cached) {
     allItems = cached;
-    setStatus("Loaded from cache.", `${allItems.length} total`);
+    setStatus("Loaded.", `${allItems.length} total`);
     applyFilters();
     return;
   }
@@ -322,13 +334,14 @@ async function loadUser(username) {
   const items = await fetchAllCollection(username);
   allItems = items;
   writeCache(username, items);
-  setStatus("Loaded from Discogs.", `${items.length} total`);
+  setStatus("Loaded.", `${items.length} total`);
   applyFilters();
 }
 
+// -------------------- URL PARAMS (shareable) --------------------
 function getUserFromUrl() {
   const u = new URL(location.href);
-  return u.searchParams.get("user") || "";
+  return (u.searchParams.get("user") || "").trim();
 }
 
 function setUserInUrl(username) {
@@ -338,15 +351,57 @@ function setUserInUrl(username) {
   history.replaceState({}, "", u.toString());
 }
 
+// -------------------- SHARE WALL (WORKS) --------------------
+async function shareWall() {
+  const username = (els.username?.value || "").trim();
+  if (!username) {
+    alert("Enter a Discogs username first.");
+    return;
+  }
+
+  // build a clean share URL (same page + ?user=)
+  const shareUrl = `${location.origin}${location.pathname}?user=${encodeURIComponent(username)}`;
+
+  const shareData = {
+    title: "My Discogs Wall",
+    text: `Check out my Discogs wall (${username}).`,
+    url: shareUrl,
+  };
+
+  // native share (mobile)
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+  } catch {
+    // user canceled share, do nothing
+    return;
+  }
+
+  // fallback: copy link
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    alert("Link copied. Paste it anywhere.");
+  } catch {
+    window.prompt("Copy this link:", shareUrl);
+  }
+}
+
+// -------------------- INIT --------------------
 function init() {
-  // Hide token UI if your HTML has it
-  if (els.tokenHint) els.tokenHint.textContent = "Server token configured (no token needed in browser).";
+  // ✅ HIDE token UI (no nerd text)
+  if (els.tokenHint) els.tokenHint.textContent = "";
   if (els.setToken) els.setToken.style.display = "none";
 
+  // ✅ Hook Share button if it exists
+  if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
+
+  // Auto-load from shared link
   const initialUser = getUserFromUrl();
   if (initialUser) {
     els.username.value = initialUser;
-    loadUser(initialUser).catch(err => setStatus(String(err.message || err), ""));
+    loadUser(initialUser).catch((err) => setStatus(String(err.message || err), ""));
   }
 
   els.go.addEventListener("click", async () => {
