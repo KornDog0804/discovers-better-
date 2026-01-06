@@ -19,7 +19,6 @@
         overflow-x: hidden;
       }
 
-      /* Splash visible by default */
       .splash {
         position: fixed;
         inset: 0;
@@ -27,11 +26,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: radial-gradient(
-          circle at center,
-          #141420 0%,
-          #0b0b0e 70%
-        );
+        background: radial-gradient(circle at center, #141420 0%, #0b0b0e 70%);
         transition: opacity 1.2s ease, transform 1.2s ease;
       }
 
@@ -61,12 +56,8 @@
       }
 
       @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
 
       .splash-kicker {
@@ -94,7 +85,6 @@
         opacity: 0.6;
       }
 
-      /* When splash is done */
       body.splash-done .splash {
         opacity: 0;
         transform: scale(1.05);
@@ -104,30 +94,20 @@
   </head>
 
   <body>
-    <!-- =========================
-         SPLASH SCREEN
-         ========================= -->
+    <!-- SPLASH -->
     <div class="splash" aria-hidden="true">
       <div class="splash-inner">
         <div class="splash-ring"></div>
-
         <div class="splash-kicker">DROP THE NEEDLE</div>
         <div class="splash-name">VinylWall</div>
-
         <div class="splash-tag">
-          Your collection isn’t data.<br />
-          It’s taste.
+          Your collection isn’t data.<br />It’s taste.
         </div>
-
-        <div class="splash-hint">
-          Load your Discogs. Let it spin.
-        </div>
+        <div class="splash-hint">Load your Discogs. Let it spin.</div>
       </div>
     </div>
 
-    <!-- =========================
-         MAIN APP
-         ========================= -->
+    <!-- APP -->
     <div id="app">
       <header class="hero">
         <div class="hero-inner">
@@ -135,30 +115,18 @@
             <div class="logo vinyl-spin" aria-hidden="true"></div>
             <div>
               <h1>VinylWall</h1>
-              <p class="sub">
-                Drop the needle on your Discogs collection.
-              </p>
+              <p class="sub">Drop the needle on your Discogs collection.</p>
             </div>
           </div>
 
           <div class="controls">
             <div class="row">
-              <input
-                id="username"
-                type="text"
-                placeholder="Discogs username"
-                autocomplete="off"
-              />
+              <input id="username" type="text" placeholder="Discogs username" />
               <button id="go">Load</button>
             </div>
 
             <div class="row">
-              <input
-                id="search"
-                type="text"
-                placeholder="Search artist / title…"
-                autocomplete="off"
-              />
+              <input id="search" type="text" placeholder="Search artist / title…" />
               <select id="sort">
                 <option value="added_desc">Recently added</option>
                 <option value="artist_asc">Artist A → Z</option>
@@ -166,7 +134,6 @@
                 <option value="year_desc">Year (new → old)</option>
                 <option value="year_asc">Year (old → new)</option>
               </select>
-
               <button id="shuffle" class="ghost">Shuffle</button>
               <button id="clear" class="ghost">Clear cache</button>
               <button id="shareWall" class="ghost">Share your wall</button>
@@ -186,27 +153,18 @@
 
       <footer class="footer">
         <div style="text-align:center; line-height:1.6;">
-          <div>
-            Inspired by the original concept by
-            <strong>Skye Klein</strong>.
-          </div>
-
+          <div>Inspired by the original concept by <strong>Skye Klein</strong>.</div>
           <div>
             Built by
-            <a
-              href="https://korndogrecords.com"
-              target="_blank"
-              rel="noopener"
-            >
+            <a href="https://korndogrecords.com" target="_blank" rel="noopener">
               KornDog Records
             </a>.
           </div>
-
           <div style="margin-top:6px;">
             <a
-              href="https://www.paypal.me/titansrule1215"
+              href="https://paypal.me/JBeg0804"
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
             >
               Buy the builder a drink 🍺
             </a>
@@ -219,16 +177,12 @@
       </footer>
     </div>
 
-    <!-- =========================
-         SPLASH TIMING (3.5s)
-         ========================= -->
     <script>
       setTimeout(() => {
         document.body.classList.add("splash-done");
       }, 3500);
     </script>
 
-    <!-- App logic -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
