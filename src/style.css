@@ -8,6 +8,8 @@
   --glow:rgba(255,255,255,.12);
   --radius:14px;
   --gap:8px;
+  --purple:#a855f7;
+  --purple-glow:rgba(168,85,247,0.4);
 }
 
 *{box-sizing:border-box}
@@ -109,12 +111,11 @@ body{
   top:2px;
   width:48px;
   height:48px;
-  transform-origin: 44px 10px; /* pivot near top-right */
+  transform-origin: 44px 10px;
   transform: rotate(-22deg) translate(0,0);
   filter: drop-shadow(0 10px 22px rgba(0,0,0,.55));
 }
 
-/* Arm body */
 .tonearm::before{
   content:"";
   position:absolute;
@@ -125,7 +126,6 @@ body{
   border:1px solid rgba(255,255,255,.12);
 }
 
-/* Head + needle */
 .tonearm::after{
   content:"";
   position:absolute;
@@ -137,14 +137,13 @@ body{
   box-shadow: inset 0 -2px 0 rgba(0,0,0,.35);
 }
 
-/* Needle tip */
 .tonearm{
   background:
     radial-gradient(circle at 7px 30px, rgba(255,255,255,.85) 0 1px, rgba(255,255,255,0) 2px);
   background-repeat:no-repeat;
 }
 
-/* Loading animations (record spin + arm drop) */
+/* Loading animations */
 .is-loading .logo{
   animation: recordSpin 900ms linear infinite;
 }
@@ -211,12 +210,13 @@ input, select, button{
   padding: 11px 12px;
   font-size:14px;
   outline:none;
+  transition: all 0.2s ease;
 }
 
 input::placeholder{color:rgba(234,234,242,.45)}
 input:focus, select:focus{
-  border-color: rgba(255,255,255,.20);
-  box-shadow: 0 0 0 4px rgba(255,255,255,.06);
+  border-color: var(--purple);
+  box-shadow: 0 0 0 4px var(--purple-glow);
 }
 
 #username{flex:1; min-width:220px}
@@ -228,7 +228,11 @@ button{
   background: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.06));
   transition: transform .08s ease, box-shadow .08s ease, border-color .08s ease;
 }
-button:hover{transform: translateY(-1px); border-color: rgba(255,255,255,.18)}
+button:hover{
+  transform: translateY(-1px); 
+  border-color: var(--purple);
+  box-shadow: 0 4px 12px var(--purple-glow);
+}
 button:active{transform: translateY(0px)}
 button.ghost{background: rgba(0,0,0,.20)}
 
@@ -242,7 +246,7 @@ button.ghost{background: rgba(0,0,0,.20)}
 }
 
 /* =========================
-   Main / Grid
+   Main / Grid - ENHANCED HOVER
    ========================= */
 main{
   flex:1;
@@ -258,10 +262,6 @@ main{
   gap: var(--gap);
 }
 
-/* Collage mode (KornDogged out — not a clone)
-   - masonry-ish columns
-   - slight tilt variety
-*/
 .grid.collage{
   display:block;
   column-count: 2;
@@ -274,6 +274,7 @@ main{
   .grid.collage{ column-count: 5; }
 }
 
+/* ===== UPGRADED TILE WITH HOVER EFFECTS ===== */
 .tile{
   position:relative;
   border-radius: 12px;
@@ -282,6 +283,7 @@ main{
   background: rgba(255,255,255,.03);
   cursor:pointer;
   aspect-ratio: 1 / 1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .grid.collage .tile{
@@ -289,10 +291,23 @@ main{
   width:100%;
   margin: 0 0 var(--gap);
   break-inside: avoid;
-  aspect-ratio: auto; /* let collage be collage */
+  aspect-ratio: auto;
   border-radius: 16px;
   transform: rotate(var(--tilt, 0deg));
   box-shadow: 0 12px 40px rgba(0,0,0,.35);
+}
+
+/* HOVER EFFECT: Scale + Glow */
+.tile:hover{
+  transform: scale(1.05);
+  box-shadow: 0 20px 60px var(--purple-glow);
+  border-color: rgba(168, 85, 247, 0.3);
+  z-index: 10;
+}
+
+.grid.collage .tile:hover{
+  transform: rotate(var(--tilt, 0deg)) scale(1.05);
+  box-shadow: 0 20px 60px var(--purple-glow);
 }
 
 .tile img{
@@ -302,7 +317,7 @@ main{
   display:block;
   filter: saturate(1.08) contrast(1.05);
   transform: scale(1.01);
-  transition: transform .12s ease, filter .12s ease;
+  transition: transform .3s ease, filter .3s ease, opacity .3s ease;
 }
 
 .grid.collage .tile img{
@@ -311,20 +326,22 @@ main{
 
 .tile:hover img{
   transform: scale(1.06);
-  filter: saturate(1.15) contrast(1.08);
+  filter: saturate(1.15) contrast(1.08) brightness(1.05);
+  opacity: 0.85;
 }
 
+/* UPGRADED BADGE: Better visibility on hover */
 .badge{
   position:absolute;
-  left:8px; right:8px; bottom:8px;
-  padding:8px 9px;
-  border-radius: 12px;
-  background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,.18));
-  color: rgba(234,234,242,.92);
+  left:0; right:0; bottom:0;
+  padding:12px;
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,.95), rgba(0,0,0,.85) 60%, rgba(0,0,0,0));
+  color: rgba(234,234,242,.95);
   font-size:12px;
   opacity:0;
-  transform: translateY(6px);
-  transition: opacity .12s ease, transform .12s ease;
+  transform: translateY(10px);
+  transition: opacity .3s ease, transform .3s ease;
   pointer-events:none;
 }
 
@@ -333,11 +350,62 @@ main{
   transform: translateY(0);
 }
 
-.badge .t{font-weight:650; line-height:1.15}
-.badge .a{opacity:.85; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.badge .t{
+  font-weight:700; 
+  line-height:1.2;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.badge .a{
+  opacity:.85; 
+  margin-top:2px; 
+  white-space:nowrap; 
+  overflow:hidden; 
+  text-overflow:ellipsis;
+  font-size: 11px;
+}
+
+.badge .discogs-hint{
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--purple);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge .discogs-hint::before{
+  content: "↗";
+  font-size: 13px;
+}
+
+/* Shimmer effect on hover */
+.tile::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tile:hover::before{
+  opacity: 1;
+}
 
 /* =========================
-   Footer + Drink link FX
+   Footer
    ========================= */
 .footer{
   border-top:1px solid var(--line);
@@ -359,8 +427,12 @@ main{
   gap:6px;
   text-decoration:none;
   font-weight:600;
+  transition: color 0.2s ease;
 }
-.drink-link:hover{text-decoration:underline}
+.drink-link:hover{
+  text-decoration:underline;
+  color: var(--purple);
+}
 
 #beer{display:inline-block; transform-origin: 70% 80%;}
 .beer-pop{animation: beerPop 520ms ease;}
@@ -425,6 +497,7 @@ main{
   top:10px; right:10px;
   width:40px;height:40px;
   border-radius: 12px;
+  z-index: 10;
 }
 
 .modal-body{
@@ -455,54 +528,19 @@ main{
 .modal-link{
   margin-top:8px;
   display:inline-block;
+  color: var(--purple);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+.modal-link:hover{
   color: rgba(234,234,242,.9);
-}
-/* Vinyl logo */
-.logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at center, #ddd 0 6%, #333 7% 10%, transparent 11%),
-    conic-gradient(
-      #5b2cff,
-      #00c3ff,
-      #5b2cff,
-      #00c3ff,
-      #5b2cff
-    );
-  box-shadow:
-    inset 0 0 0 2px rgba(255,255,255,.15),
-    0 10px 30px rgba(0,0,0,.5);
+  text-decoration: underline;
 }
 
-/* Spin only while loading */
-.vinyl-spin.loading {
-  animation: spin 1.2s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-/* Fix logo overlap on mobile */
-.hero .brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.hero .logo {
-  flex-shrink: 0;
-  position: relative;
-  top: 0;
-  left: 0;
-}
-
-.hero h1 {
-  margin: 0;
-}
-/* ====== PROFESSIONAL CENTERING FIX ====== */
-
+/* =========================
+   Centering fixes
+   ========================= */
 .hero {
   width: 100%;
   padding: 28px 16px 18px;
@@ -538,74 +576,6 @@ main{
   margin: 0 auto;
 }
 
-.controls .row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.controls .row input,
-.controls .row select,
-.controls .row button {
-  min-height: 44px;
-}
-
-.controls .row:first-child input {
-  flex: 1 1 260px;
-}
-
-.controls .row:first-child button {
-  flex: 0 0 auto;
-  min-width: 92px;
-}
-
-.controls .row:nth-child(2) input {
-  flex: 1 1 260px;
-}
-
-.controls .row:nth-child(2) select {
-  flex: 0 0 220px;
-  max-width: 220px;
-}
-
-.controls .row:nth-child(2) button {
-  flex: 0 0 auto;
-}
-
-.status {
-  margin-top: 10px;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  opacity: 0.85;
-}
-
-main {
-  width: 100%;
-}
-
-.grid {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 14px 16px 40px;
-}
-
-/* Footer: centered, tight, clean */
-.footer {
-  width: 100%;
-  padding: 18px 16px 26px;
-  text-align: center;
-  opacity: 0.9;
-}
-
-.footer a {
-  text-decoration: none;
-}
-
-.footer a:hover {
-  text-decoration: underline;
-}
 .footer {
   width: 100%;
   display: flex;
@@ -620,12 +590,20 @@ main {
   margin: 0 auto;
   line-height: 1.7;
 }
-/* =========================
-   VINYLWALL SPLASH (CSS ONLY)
-   Holy-sh*t intro screen
-   ========================= */
 
-/* If your site already uses a background, this sits on top */
+.footer a {
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+  color: var(--purple);
+}
+
+/* =========================
+   Splash Screen
+   ========================= */
 .splash {
   position: fixed;
   inset: 0;
@@ -638,9 +616,14 @@ main {
     radial-gradient(1200px 900px at 50% 40%, rgba(160, 255, 200, 0.10), transparent 60%),
     radial-gradient(900px 700px at 35% 65%, rgba(170, 120, 255, 0.12), transparent 55%),
     linear-gradient(180deg, rgba(10, 10, 14, 0.96), rgba(10, 10, 14, 0.92));
+  transition: opacity 0.9s ease;
 }
 
-/* Film grain + vignette */
+body.splash-done .splash {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .splash::before,
 .splash::after {
   content: "";
@@ -688,7 +671,6 @@ main {
   padding: 34px 28px 26px;
   border-radius: 28px;
   text-align: center;
-
   background:
     linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
   border: 1px solid rgba(255,255,255,0.12);
@@ -696,7 +678,6 @@ main {
     0 18px 60px rgba(0,0,0,0.55),
     0 0 0 1px rgba(0,0,0,0.2) inset;
   backdrop-filter: blur(10px);
-
   transform: translateY(8px) scale(0.98);
   opacity: 0;
   animation: splashIn 700ms cubic-bezier(.2,.9,.2,1) forwards;
@@ -709,7 +690,6 @@ main {
   }
 }
 
-/* Vinyl ring (the “oh damn” centerpiece) */
 .splash-ring {
   width: 140px;
   height: 140px;
@@ -726,8 +706,6 @@ main {
   box-shadow:
     0 18px 40px rgba(0,0,0,0.65),
     0 0 0 1px rgba(255,255,255,0.12) inset;
-
-  /* subtle rotation gives “alive” without being corny */
   animation: ringBreathe 2.2s ease-in-out infinite;
 }
 
@@ -736,7 +714,6 @@ main {
   50% { transform: rotate(1.2deg) scale(1.02); filter: saturate(1.15); }
 }
 
-/* Center label glow */
 .splash-ring::before {
   content: "";
   position: absolute;
@@ -748,7 +725,6 @@ main {
   box-shadow: 0 0 26px rgba(160,255,200,0.22);
 }
 
-/* Tiny “needle scratch” highlight */
 .splash-ring::after {
   content: "";
   position: absolute;
@@ -763,23 +739,6 @@ main {
   );
   opacity: 0.45;
   filter: blur(0.6px);
-}
-
-/* If your site already has a .logo class, this will sit near it visually */
-.splash-logo {
-  width: 10px;
-  height: 10px;
-  margin: 0 auto 2px;
-  border-radius: 999px;
-  opacity: 0;
-  animation: dotPop 700ms 260ms ease forwards;
-}
-@keyframes dotPop {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.splash-title {
-  margin-top: 10px;
 }
 
 .splash-kicker {
@@ -799,8 +758,6 @@ main {
   font-weight: 900;
   line-height: 1.05;
   letter-spacing: -0.02em;
-
-  /* big glossy “share me” headline */
   background: linear-gradient(90deg,
     rgba(190,255,220,0.95),
     rgba(210,190,255,0.95),
@@ -809,11 +766,9 @@ main {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-
   text-shadow:
     0 6px 30px rgba(0,0,0,0.55),
     0 0 18px rgba(160,255,200,0.18);
-
   transform: translateY(10px);
   opacity: 0;
   animation: textRise 680ms 320ms cubic-bezier(.2,.9,.2,1) forwards;
@@ -838,19 +793,16 @@ main {
   animation: textRise 520ms 600ms ease forwards;
 }
 
-/* shared helper */
 @keyframes textRise {
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* Optional: on very small phones, tighten */
 @media (max-width: 420px) {
   .splash-inner { padding: 28px 18px 22px; border-radius: 24px; }
   .splash-ring { width: 124px; height: 124px; }
   .splash-tag { font-size: 13px; }
 }
 
-/* Accessibility: reduce motion */
 @media (prefers-reduced-motion: reduce) {
   .splash::after,
   .splash-inner,
@@ -858,18 +810,20 @@ main {
   .splash-kicker,
   .splash-name,
   .splash-tag,
-  .splash-hint {
+  .splash-hint,
+  .tile,
+  .tile img,
+  .badge,
+  button,
+  input,
+  select {
     animation: none !important;
+    transition: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
 }
-body.splash-done .splash {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.9s ease;
-}
-/* Make sure modal content is above the backdrop and clickable */
+
 #modal[aria-hidden="false"] { pointer-events: auto; }
 #modalBackdrop { pointer-events: auto; }
 #modal .modal-inner, #modal .modal-content { position: relative; z-index: 3; }
