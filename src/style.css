@@ -64,8 +64,8 @@ body{
   width:56px;height:56px;border-radius:999px;
   border:1px solid rgba(255,255,255,.14);
   box-shadow: 0 12px 40px rgba(0,0,0,.55);
-  position:absolute;
-  left:0; top:4px;
+  position:relative;
+  left:0; top:0;
   background:
     radial-gradient(circle at 50% 50%, rgba(0,0,0,.0) 0 10%, rgba(0,0,0,.85) 11% 16%, rgba(0,0,0,.0) 17%),
     radial-gradient(circle at 50% 50%, rgba(255,255,255,.06) 0 55%, rgba(255,255,255,0) 56%),
@@ -108,7 +108,7 @@ body{
 .tonearm{
   position:absolute;
   right:-2px;
-  top:2px;
+  top:-2px;
   width:48px;
   height:48px;
   transform-origin: 44px 10px;
@@ -368,17 +368,44 @@ main{
 
 .badge .discogs-hint{
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--purple);
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 .badge .discogs-hint::before{
   content: "↗";
-  font-size: 13px;
+  font-size: 12px;
+}
+
+/* Mobile: Always show a subtle hint */
+@media (hover: none) and (pointer: coarse) {
+  .badge{
+    opacity: 1;
+    background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,0));
+    padding: 8px 10px;
+  }
+  
+  .badge .t,
+  .badge .a {
+    display: none;
+  }
+  
+  .badge .discogs-hint{
+    display: block;
+    margin: 0;
+    text-align: center;
+    font-size: 9px;
+  }
 }
 
 /* Shimmer effect on hover */
