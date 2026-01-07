@@ -38,6 +38,341 @@ let viewItems = [];
 let observer = null;
 let collageOn = false;
 
+// =====================
+// STATS (persist + overlay)
+// =====================
+const STATS_KEY = "vw_stats";
+
+function stripDiscogsSuffix(name) {
+  // "Metallica (2)" -> "Metallica"
+  return String(name || "").replace(/\s\(\d+\)$/, "").trim();
+}
+
+function computeCollectionStats(items) {
+  const artistCount = new Map();
+  let oldest = null;
+  let newest = null;
+
+  for (const it of items || []) {
+    const artist = stripDiscogsSuffix(it.artist || "");
+    if (artist) artistCount.set(artist, (artistCount.get(artist) || 0) + 1);
+
+    const y = typeof it.year === "number" ? it.year : parseInt(it.year, 10) || 0;
+    if (y > 0) {
+      oldest = oldest === null ? y : Math.min(oldest, y);
+      newest = newest === null ? y : Math.max(newest, y);
+    }
+  }
+
+  const topArtists = [...artistCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, count]) => ({ name, count }));
+
+  return {
+    totalShown: (items || []).length,
+    uniqueArtists: artistCount.size,
+    oldestYear: oldest,
+    newestYear: newest,
+    topArtists,
+  };
+}
+
+function saveStats(username, stats) {
+  try {
+    localStorage.setItem(
+      STATS_KEY,
+      JSON.stringify({ username: String(username || ""), stats, ts: Date.now() })
+    );
+  } catch {}
+}
+
+function readStats() {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.stats) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function ensureStatsUI() {
+  // If user already has a stats UI from prior edits, don’t duplicate.
+  if (document.getElementById("vwStatsPanel")) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    .vw-stats-fab{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 9998;
+      border-radius: 999px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(10,10,14,0.72);
+      color: #fff;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.45);
+      font-weight: 700;
+      letter-spacing: .02em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .vw-stats-backdrop{
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      background: rgba(0,0,0,0.55);
+      display: none;
+    }
+    .vw-stats-panel{
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      z-index: 9999;
+      width: min(720px, calc(100vw - 26px));
+      max-height: min(78vh, 760px);
+      overflow: auto;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(12,12,18,0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.6);
+      padding: 14px;
+      display: none;
+    }
+    .vw-stats-head{
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap: 10px; padding: 6px 8px 10px;
+    }
+    .vw-stats-title{
+      font-size: 14px; letter-spacing: .12em; opacity:.7; text-transform: uppercase;
+    }
+    .vw-stats-user{
+      font-size: 14px; opacity:.9; margin-top: 2px;
+    }
+    .vw-stats-close{
+      border: 0;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 12px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .vw-stats-grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 8px;
+    }
+    @media (min-width: 720px){
+      .vw-stats-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .vw-card{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.05);
+      padding: 12px;
+      min-height: 86px;
+    }
+    .vw-card .k{ font-size: 12px; letter-spacing:.12em; opacity:.6; text-transform: uppercase; }
+    .vw-card .v{ font-size: 28px; font-weight: 800; margin-top: 6px; }
+    .vw-card .s{ font-size: 12px; opacity: .7; margin-top: 2px; }
+    .vw-top{
+      padding: 8px;
+    }
+    .vw-top h3{
+      margin: 8px 8px 10px;
+      font-size: 12px;
+      letter-spacing: .14em;
+      opacity:.65;
+      text-transform: uppercase;
+    }
+    .vw-top-list{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.05);
+      padding: 10px;
+      margin: 0 8px 10px;
+    }
+    .vw-top-row{
+      display:flex; justify-content:space-between; gap: 10px;
+      padding: 8px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 14px;
+      opacity: .92;
+    }
+    .vw-top-row:last-child{ border-bottom: 0; }
+    .vw-muted{ opacity:.65; padding: 8px 6px; }
+    .vw-stats-foot{
+      display:flex; justify-content:space-between; gap: 10px;
+      padding: 0 14px 12px;
+      font-size: 12px; opacity:.55;
+    }
+  `;
+  document.head.appendChild(style);
+
+  const fab = document.createElement("button");
+  fab.className = "vw-stats-fab";
+  fab.id = "vwStatsFab";
+  fab.type = "button";
+  fab.textContent = "Stats";
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "vw-stats-backdrop";
+  backdrop.id = "vwStatsBackdrop";
+
+  const panel = document.createElement("div");
+  panel.className = "vw-stats-panel";
+  panel.id = "vwStatsPanel";
+  panel.innerHTML = `
+    <div class="vw-stats-head">
+      <div>
+        <div class="vw-stats-title">Collection Flex</div>
+        <div class="vw-stats-user">Loaded: <span id="vwStatsUser">—</span></div>
+      </div>
+      <button class="vw-stats-close" id="vwStatsClose" type="button">✕</button>
+    </div>
+
+    <div class="vw-stats-grid">
+      <div class="vw-card">
+        <div class="k">Items</div>
+        <div class="v" id="vwStatsItems">—</div>
+        <div class="s">shown</div>
+      </div>
+
+      <div class="vw-card">
+        <div class="k">Unique artists</div>
+        <div class="v" id="vwStatsUniqueArtists">—</div>
+        <div class="s">estimated</div>
+      </div>
+
+      <div class="vw-card">
+        <div class="k">Oldest</div>
+        <div class="v" id="vwStatsOldest">—</div>
+        <div class="s">year</div>
+      </div>
+
+      <div class="vw-card">
+        <div class="k">Newest</div>
+        <div class="v" id="vwStatsNewest">—</div>
+        <div class="s">year</div>
+      </div>
+    </div>
+
+    <div class="vw-top">
+      <h3>Top artists</h3>
+      <div class="vw-top-list" id="vwStatsTopArtists">
+        <div class="vw-muted">No stats yet</div>
+      </div>
+    </div>
+
+    <div class="vw-stats-foot">
+      <div>Tip: this stays for return visits.</div>
+      <div>Saved as ${STATS_KEY}</div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(panel);
+  document.body.appendChild(fab);
+
+  const open = () => {
+    backdrop.style.display = "block";
+    panel.style.display = "block";
+  };
+  const close = () => {
+    backdrop.style.display = "none";
+    panel.style.display = "none";
+  };
+
+  fab.addEventListener("click", open);
+  backdrop.addEventListener("click", close);
+  panel.querySelector("#vwStatsClose")?.addEventListener("click", close);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+}
+
+function renderStatsOverlay(username, items) {
+  ensureStatsUI();
+
+  const stats = computeCollectionStats(items);
+  saveStats(username, stats);
+
+  const setText = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = v;
+  };
+
+  setText("vwStatsUser", username || "—");
+  setText("vwStatsItems", String(stats.totalShown || 0));
+  setText("vwStatsUniqueArtists", stats.uniqueArtists ? String(stats.uniqueArtists) : "—");
+  setText("vwStatsOldest", stats.oldestYear ? String(stats.oldestYear) : "—");
+  setText("vwStatsNewest", stats.newestYear ? String(stats.newestYear) : "—");
+
+  const list = document.getElementById("vwStatsTopArtists");
+  if (list) {
+    list.innerHTML = "";
+    if (!stats.topArtists.length) {
+      list.innerHTML = `<div class="vw-muted">No stats yet</div>`;
+    } else {
+      for (const a of stats.topArtists) {
+        const row = document.createElement("div");
+        row.className = "vw-top-row";
+        row.innerHTML = `<span>${escapeHtml(a.name)}</span><span>${a.count}</span>`;
+        list.appendChild(row);
+      }
+    }
+  }
+
+  return stats;
+}
+
+function hydrateStatsFromStorage() {
+  const saved = readStats();
+  if (!saved?.stats) return;
+
+  ensureStatsUI();
+
+  const username = saved.username || "—";
+  const stats = saved.stats;
+
+  const setText = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = v;
+  };
+
+  setText("vwStatsUser", username);
+  setText("vwStatsItems", String(stats.totalShown || 0));
+  setText("vwStatsUniqueArtists", stats.uniqueArtists ? String(stats.uniqueArtists) : "—");
+  setText("vwStatsOldest", stats.oldestYear ? String(stats.oldestYear) : "—");
+  setText("vwStatsNewest", stats.newestYear ? String(stats.newestYear) : "—");
+
+  const list = document.getElementById("vwStatsTopArtists");
+  if (list) {
+    list.innerHTML = "";
+    if (!Array.isArray(stats.topArtists) || !stats.topArtists.length) {
+      list.innerHTML = `<div class="vw-muted">No stats yet</div>`;
+    } else {
+      for (const a of stats.topArtists.slice(0, 8)) {
+        const row = document.createElement("div");
+        row.className = "vw-top-row";
+        row.innerHTML = `<span>${escapeHtml(a.name)}</span><span>${a.count}</span>`;
+        list.appendChild(row);
+      }
+    }
+  }
+}
+
 // -------------------- LOADING STATE --------------------
 function setLoading(on) {
   document.body.classList.toggle("is-loading", !!on);
@@ -219,10 +554,8 @@ function createObserver() {
 function openDiscogs(url) {
   if (!url) return;
 
-  // Direct navigation is the most reliable across in-app browsers
-  // (window.open often gets blocked)
+  // If you REALLY want new tab behavior, keep this first:
   try {
-    // If you REALLY want new tab behavior, keep this first:
     const w = window.open(url, "_blank", "noopener,noreferrer");
     if (w) return;
   } catch {}
@@ -321,17 +654,25 @@ function renderGrid(items) {
 
     // Optional: long-press opens modal (for details)
     let pressTimer = null;
-    tile.addEventListener("touchstart", () => {
-      pressTimer = setTimeout(() => openModal(item), 450);
-    }, { passive: true });
+    tile.addEventListener(
+      "touchstart",
+      () => {
+        pressTimer = setTimeout(() => openModal(item), 450);
+      },
+      { passive: true }
+    );
     tile.addEventListener("touchend", () => {
       if (pressTimer) clearTimeout(pressTimer);
       pressTimer = null;
     });
-    tile.addEventListener("touchmove", () => {
-      if (pressTimer) clearTimeout(pressTimer);
-      pressTimer = null;
-    }, { passive: true });
+    tile.addEventListener(
+      "touchmove",
+      () => {
+        if (pressTimer) clearTimeout(pressTimer);
+        pressTimer = null;
+      },
+      { passive: true }
+    );
 
     frag.appendChild(tile);
     observer.observe(img);
@@ -374,6 +715,10 @@ function applyFilters() {
   viewItems = items;
   renderGrid(viewItems);
   setStatus("Loaded.", `${viewItems.length} shown`);
+
+  // ✅ Update stats based on what's currently shown (search/sort affects this)
+  const currentUser = (els.username?.value || "").trim();
+  if (currentUser && viewItems.length) renderStatsOverlay(currentUser, viewItems);
 }
 
 function shuffleCurrent() {
@@ -385,6 +730,9 @@ function shuffleCurrent() {
   viewItems = arr;
   renderGrid(viewItems);
   setStatus("Shuffled.", `${viewItems.length} shown`);
+
+  const currentUser = (els.username?.value || "").trim();
+  if (currentUser && viewItems.length) renderStatsOverlay(currentUser, viewItems);
 }
 
 // -------------------- URL PARAMS --------------------
@@ -556,6 +904,9 @@ async function loadUser(username) {
     setStatus("Loaded.", `${allItems.length} total`);
     applyFilters();
     needleDropSound();
+
+    // ✅ Stats even on cached loads
+    renderStatsOverlay(username, viewItems.length ? viewItems : allItems);
     return;
   }
 
@@ -568,6 +919,9 @@ async function loadUser(username) {
     setStatus("Loaded.", `${items.length} total`);
     applyFilters();
     needleDropSound();
+
+    // ✅ Stats after fresh load
+    renderStatsOverlay(username, viewItems.length ? viewItems : allItems);
   } finally {
     setLoading(false);
   }
@@ -577,6 +931,9 @@ async function loadUser(username) {
 function init() {
   if (els.tokenHint) els.tokenHint.textContent = "";
   if (els.setToken) els.setToken.style.display = "none";
+
+  // ✅ Make sure stats UI can show immediately for return visitors
+  hydrateStatsFromStorage();
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
@@ -644,6 +1001,9 @@ function init() {
   if (els.clear) {
     els.clear.addEventListener("click", () => {
       clearAllCaches();
+      try {
+        localStorage.removeItem(STATS_KEY);
+      } catch {}
       setStatus("Cache cleared.", "");
     });
   }
