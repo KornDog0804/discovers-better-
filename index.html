@@ -15,274 +15,6 @@
 
     <!-- Core styles -->
     <link rel="stylesheet" href="/src/style.css" />
-
-    <!-- Splash + Stats overlay styles -->
-    <style>
-      body {
-        margin: 0;
-        background: #0b0b0e;
-        color: #fff;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-          Roboto, sans-serif;
-        overflow-x: hidden;
-      }
-
-      /* Splash visible by default */
-      .splash {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: radial-gradient(circle at center, #141420 0%, #0b0b0e 70%);
-        transition: opacity 1.2s ease, transform 1.2s ease;
-      }
-
-      .splash-inner {
-        text-align: center;
-        padding: 32px;
-        max-width: 420px;
-        backdrop-filter: blur(14px);
-        border-radius: 22px;
-        background: rgba(255, 255, 255, 0.06);
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-      }
-
-      .splash-ring {
-        width: 120px;
-        height: 120px;
-        margin: 0 auto 18px;
-        border-radius: 50%;
-        background: radial-gradient(
-          circle at center,
-          #9b87ff 0%,
-          #3a2fff 35%,
-          #111 70%
-        );
-        box-shadow: 0 0 40px rgba(155, 135, 255, 0.6);
-        animation: spin 6s linear infinite;
-      }
-
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .splash-kicker {
-        letter-spacing: 0.25em;
-        font-size: 12px;
-        opacity: 0.7;
-        margin-bottom: 6px;
-      }
-
-      .splash-name {
-        font-size: 34px;
-        font-weight: 700;
-        margin-bottom: 10px;
-      }
-
-      .splash-tag {
-        font-size: 15px;
-        opacity: 0.85;
-        line-height: 1.4;
-      }
-
-      .splash-hint {
-        margin-top: 18px;
-        font-size: 13px;
-        opacity: 0.6;
-      }
-
-      /* When splash is done */
-      body.splash-done .splash {
-        opacity: 0;
-        transform: scale(1.05);
-        pointer-events: none;
-      }
-
-      /* =========================
-         STATS OVERLAY (WOW)
-         ========================= */
-      .stats-fab {
-        position: fixed;
-        right: 14px;
-        bottom: 14px;
-        z-index: 9998;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
-
-      .stats-btn {
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.06);
-        color: #fff;
-        padding: 10px 12px;
-        border-radius: 14px;
-        cursor: pointer;
-        font-weight: 650;
-        letter-spacing: 0.02em;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-        user-select: none;
-      }
-      .stats-btn:active {
-        transform: translateY(1px);
-      }
-
-      .stats-panel {
-        position: fixed;
-        right: 14px;
-        bottom: 64px;
-        width: min(360px, calc(100vw - 28px));
-        z-index: 9998;
-        border-radius: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(10, 10, 14, 0.78);
-        backdrop-filter: blur(16px);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-        overflow: hidden;
-        transform: translateY(14px);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 220ms ease, transform 220ms ease;
-      }
-
-      .stats-panel.open {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
-      }
-
-      .stats-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 14px 10px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.10);
-      }
-
-      .stats-title {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .stats-title strong {
-        font-size: 14px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        opacity: 0.9;
-      }
-
-      .stats-sub {
-        font-size: 12px;
-        opacity: 0.65;
-      }
-
-      .stats-close {
-        background: transparent;
-        border: 0;
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 22px;
-        cursor: pointer;
-        padding: 0 6px;
-        line-height: 1;
-      }
-
-      .stats-body {
-        padding: 12px 14px 14px;
-        display: grid;
-        gap: 10px;
-      }
-
-      .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .stat-card {
-        border-radius: 14px;
-        padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.10);
-      }
-
-      .stat-k {
-        font-size: 11px;
-        opacity: 0.65;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-      }
-
-      .stat-v {
-        font-size: 18px;
-        font-weight: 800;
-        letter-spacing: 0.02em;
-      }
-
-      .stat-small {
-        font-size: 12px;
-        opacity: 0.75;
-        margin-top: 4px;
-      }
-
-      .top-list {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        display: grid;
-        gap: 8px;
-      }
-
-      .top-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.09);
-      }
-
-      .top-name {
-        font-weight: 700;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 72%;
-      }
-
-      .top-count {
-        font-weight: 800;
-        opacity: 0.9;
-      }
-
-      .stats-foot {
-        padding: 10px 14px 14px;
-        border-top: 1px solid rgba(255, 255, 255, 0.10);
-        font-size: 12px;
-        opacity: 0.65;
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-      }
-
-      .stats-foot code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-          "Liberation Mono", "Courier New", monospace;
-        font-size: 11px;
-        opacity: 0.9;
-      }
-    </style>
   </head>
 
   <body>
@@ -297,67 +29,13 @@
         <div class="splash-name">VinylWall</div>
 
         <div class="splash-tag">
-          Your collection isn’t data.<br />
-          It’s taste.
+          Your collection isn't data.<br />
+          It's taste.
         </div>
 
         <div class="splash-hint">Load your Discogs. Let it spin.</div>
       </div>
     </div>
-
-    <!-- =========================
-         STATS OVERLAY UI
-         ========================= -->
-    <div class="stats-fab">
-      <button id="statsToggle" class="stats-btn" type="button">Stats</button>
-    </div>
-
-    <aside id="statsPanel" class="stats-panel" aria-hidden="true">
-      <div class="stats-head">
-        <div class="stats-title">
-          <strong>Collection flex</strong>
-          <div id="statsSub" class="stats-sub">Load a username to see stats.</div>
-        </div>
-        <button id="statsClose" class="stats-close" aria-label="Close" type="button">
-          ×
-        </button>
-      </div>
-
-      <div class="stats-body">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-k">Items</div>
-            <div id="statItems" class="stat-v">—</div>
-            <div id="statItemsSmall" class="stat-small">shown</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-k">Unique artists</div>
-            <div id="statArtists" class="stat-v">—</div>
-            <div class="stat-small">estimated</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-k">Oldest</div>
-            <div id="statOldest" class="stat-v">—</div>
-            <div class="stat-small">year</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-k">Newest</div>
-            <div id="statNewest" class="stat-v">—</div>
-            <div class="stat-small">year</div>
-          </div>
-        </div>
-
-        <div class="stat-card" style="padding: 12px;">
-          <div class="stat-k" style="margin-bottom: 10px;">Top artists</div>
-          <ol id="topArtists" class="top-list"></ol>
-        </div>
-      </div>
-
-      <div class="stats-foot">
-        <span>Tip: this stays for return visits.</span>
-        <span>Saved as <code>vw_stats</code></span>
-      </div>
-    </aside>
 
     <!-- =========================
          MAIN APP
@@ -366,7 +44,10 @@
       <header class="hero">
         <div class="hero-inner">
           <div class="brand">
-            <div class="logo vinyl-spin" aria-hidden="true"></div>
+            <div class="turntable">
+              <div class="logo vinyl-spin"></div>
+              <div class="tonearm"></div>
+            </div>
             <div>
               <h1>VinylWall</h1>
               <p class="sub">Drop the needle on your Discogs collection.</p>
@@ -431,17 +112,43 @@
 
           <div style="margin-top: 6px;">
             <a
-              href="https://paypal.me/JBeg0804"
+              id="drinkLink"
+              href="#"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Buy the builder a drink 🍺
+              Buy the builder a drink <span id="beer">🍺</span>
             </a>
             &nbsp;•&nbsp;
             <a href="mailto:korndogrecords@gmail.com">korndogrecords@gmail.com</a>
           </div>
         </div>
       </footer>
+    </div>
+
+    <!-- Cheers toast notification -->
+    <div id="cheersToast" class="cheers-toast" hidden></div>
+
+    <!-- =========================
+         MODAL (for album details - optional)
+         ========================= -->
+    <div id="modal" class="modal" aria-hidden="true">
+      <div id="modalBackdrop" class="modal-backdrop"></div>
+      <div class="modal-card">
+        <button id="modalClose" class="modal-close">✕</button>
+        <div class="modal-body">
+          <img id="modalImg" src="" alt="" />
+          <div class="modal-meta">
+            <div id="modalTitle" class="modal-title"></div>
+            <div id="modalArtist" class="modal-artist"></div>
+            <div id="modalYear" class="modal-year"></div>
+            <div id="modalFormat" class="modal-format"></div>
+            <a id="modalLink" href="#" target="_blank" rel="noopener" class="modal-link">
+              Open on Discogs ↗
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- =========================
@@ -451,306 +158,6 @@
       setTimeout(() => {
         document.body.classList.add("splash-done");
       }, 3500);
-    </script>
-
-    <!-- =========================
-         STATS ENGINE (NO DEVTOOLS NEEDED)
-         - Watches Discogs responses (fetch wrapper)
-         - Builds stats + top artists
-         - Saves for return visits (localStorage vw_stats)
-         ========================= -->
-    <script>
-      (function () {
-        const $ = (id) => document.getElementById(id);
-
-        const panel = $("statsPanel");
-        const toggle = $("statsToggle");
-        const close = $("statsClose");
-
-        const statItems = $("statItems");
-        const statItemsSmall = $("statItemsSmall");
-        const statArtists = $("statArtists");
-        const statOldest = $("statOldest");
-        const statNewest = $("statNewest");
-        const topArtistsEl = $("topArtists");
-        const statsSub = $("statsSub");
-
-        let currentUser = "";
-        let releasesSeen = new Map(); // key -> normalized release identity
-        let artistCounts = new Map();
-        let oldestYear = null;
-        let newestYear = null;
-
-        function openPanel() {
-          panel.classList.add("open");
-          panel.setAttribute("aria-hidden", "false");
-        }
-        function closePanel() {
-          panel.classList.remove("open");
-          panel.setAttribute("aria-hidden", "true");
-        }
-
-        toggle.addEventListener("click", () => {
-          if (panel.classList.contains("open")) closePanel();
-          else openPanel();
-        });
-        close.addEventListener("click", closePanel);
-
-        // Close on Escape (desktop)
-        document.addEventListener("keydown", (e) => {
-          if (e.key === "Escape") closePanel();
-        });
-
-        function safeText(el, val) {
-          el.textContent = val;
-        }
-
-        function norm(str) {
-          return String(str || "")
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, " ");
-        }
-
-        function addArtist(name) {
-          const k = norm(name);
-          if (!k) return;
-          artistCounts.set(k, (artistCounts.get(k) || 0) + 1);
-        }
-
-        function tryParseReleaseItem(item) {
-          // Discogs collection item typically looks like:
-          // { basic_information: { artists:[{name}], title, year }, ... }
-          const bi = item && (item.basic_information || item);
-          if (!bi) return null;
-
-          const title = bi.title || "";
-          const year = Number(bi.year || 0) || null;
-
-          let artistName = "";
-          if (Array.isArray(bi.artists) && bi.artists[0]) {
-            artistName = bi.artists[0].name || "";
-          } else if (bi.artist) {
-            artistName = bi.artist;
-          }
-
-          // stable-ish key
-          const key =
-            norm(artistName) + "||" + norm(title) + "||" + String(year || "");
-
-          return { key, artistName, year };
-        }
-
-        function updateYears(year) {
-          if (!year) return;
-          if (oldestYear === null || year < oldestYear) oldestYear = year;
-          if (newestYear === null || year > newestYear) newestYear = year;
-        }
-
-        function renderTopArtists() {
-          topArtistsEl.innerHTML = "";
-
-          const sorted = Array.from(artistCounts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 8);
-
-          if (sorted.length === 0) {
-            const li = document.createElement("li");
-            li.className = "top-row";
-            li.innerHTML =
-              '<span class="top-name" style="opacity:.75;">No stats yet</span><span class="top-count">—</span>';
-            topArtistsEl.appendChild(li);
-            return;
-          }
-
-          for (const [nameKey, count] of sorted) {
-            const pretty = nameKey
-              .split(" ")
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-              .join(" ");
-
-            const li = document.createElement("li");
-            li.className = "top-row";
-            li.innerHTML = `<span class="top-name">${pretty}</span><span class="top-count">${count}</span>`;
-            topArtistsEl.appendChild(li);
-          }
-        }
-
-        function renderStats(itemsShown) {
-          safeText(statItems, itemsShown != null ? String(itemsShown) : "—");
-          safeText(statItemsSmall, "shown");
-
-          safeText(
-            statArtists,
-            artistCounts.size ? String(artistCounts.size) : "—"
-          );
-          safeText(statOldest, oldestYear != null ? String(oldestYear) : "—");
-          safeText(statNewest, newestYear != null ? String(newestYear) : "—");
-
-          renderTopArtists();
-
-          // persist
-          const payload = {
-            user: currentUser,
-            itemsShown: itemsShown ?? null,
-            uniqueArtists: artistCounts.size || 0,
-            oldestYear,
-            newestYear,
-            topArtists: Array.from(artistCounts.entries())
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 12),
-            ts: Date.now(),
-          };
-          try {
-            localStorage.setItem("vw_stats", JSON.stringify(payload));
-          } catch (_) {}
-        }
-
-        function loadSavedStats() {
-          try {
-            const raw = localStorage.getItem("vw_stats");
-            if (!raw) return;
-
-            const s = JSON.parse(raw);
-            if (!s) return;
-
-            currentUser = s.user || "";
-            safeText(
-              statsSub,
-              currentUser
-                ? `Last loaded: ${currentUser}`
-                : "Last loaded stats"
-            );
-
-            safeText(statItems, s.itemsShown != null ? String(s.itemsShown) : "—");
-            safeText(statArtists, s.uniqueArtists ? String(s.uniqueArtists) : "—");
-            safeText(statOldest, s.oldestYear != null ? String(s.oldestYear) : "—");
-            safeText(statNewest, s.newestYear != null ? String(s.newestYear) : "—");
-
-            topArtistsEl.innerHTML = "";
-            const top = Array.isArray(s.topArtists) ? s.topArtists.slice(0, 8) : [];
-            if (top.length === 0) {
-              renderTopArtists();
-              return;
-            }
-            for (const [nameKey, count] of top) {
-              const pretty = String(nameKey || "")
-                .split(" ")
-                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(" ");
-
-              const li = document.createElement("li");
-              li.className = "top-row";
-              li.innerHTML = `<span class="top-name">${pretty}</span><span class="top-count">${count}</span>`;
-              topArtistsEl.appendChild(li);
-            }
-          } catch (_) {}
-        }
-
-        // Watch username input so we know who we're loading
-        function attachUserWatcher() {
-          const usernameInput = document.getElementById("username");
-          const goBtn = document.getElementById("go");
-          if (!usernameInput || !goBtn) return;
-
-          goBtn.addEventListener("click", () => {
-            currentUser = (usernameInput.value || "").trim();
-            if (currentUser) {
-              statsSub.textContent = `Loading stats for: ${currentUser}`;
-              openPanel(); // instant WOW
-            }
-
-            // reset session stats
-            releasesSeen = new Map();
-            artistCounts = new Map();
-            oldestYear = null;
-            newestYear = null;
-            renderStats(0);
-          });
-        }
-
-        // Also watch count text (your UI already shows "304 shown")
-        function attachCountWatcher() {
-          const countEl = document.getElementById("countText");
-          const statusEl = document.getElementById("statusText");
-          if (!countEl || !statusEl) return;
-
-          const obs = new MutationObserver(() => {
-            const countTxt = (countEl.textContent || "").trim(); // e.g. "304 shown"
-            const num = parseInt(countTxt, 10);
-            if (!Number.isNaN(num)) renderStats(num);
-
-            const statusTxt = (statusEl.textContent || "").trim().toLowerCase();
-            if (statusTxt.includes("loaded")) {
-              statsSub.textContent = currentUser
-                ? `Loaded: ${currentUser}`
-                : "Loaded.";
-              // leave panel available forever
-            }
-          });
-
-          obs.observe(countEl, { childList: true, characterData: true, subtree: true });
-          obs.observe(statusEl, { childList: true, characterData: true, subtree: true });
-        }
-
-        // Fetch wrapper: harvest Discogs collection data silently
-        const origFetch = window.fetch;
-        window.fetch = async function (...args) {
-          const res = await origFetch.apply(this, args);
-
-          try {
-            const url = String(args[0] || "");
-            // Only peek at responses that look like Discogs API calls
-            if (url.includes("discogs.com")) {
-              const clone = res.clone();
-              clone
-                .json()
-                .then((data) => {
-                  // Most Discogs collection responses contain { releases: [...] }
-                  const releases = data && Array.isArray(data.releases) ? data.releases : null;
-                  if (!releases) return;
-
-                  for (const item of releases) {
-                    const parsed = tryParseReleaseItem(item);
-                    if (!parsed) continue;
-
-                    if (releasesSeen.has(parsed.key)) continue;
-                    releasesSeen.set(parsed.key, true);
-
-                    addArtist(parsed.artistName);
-                    updateYears(parsed.year);
-                  }
-
-                  // If UI count is missing/slow, this still makes the overlay feel alive.
-                  const approxItems = releasesSeen.size;
-                  if (approxItems > 0) {
-                    statsSub.textContent = currentUser
-                      ? `Building stats for: ${currentUser}`
-                      : "Building stats…";
-                    renderStats(null); // don't overwrite shown count unless countText gives it
-                  }
-                })
-                .catch(() => {});
-            }
-          } catch (_) {}
-
-          return res;
-        };
-
-        // boot
-        loadSavedStats();
-        attachUserWatcher();
-        attachCountWatcher();
-
-        // Auto-open on load if we have saved stats (feels premium)
-        try {
-          const raw = localStorage.getItem("vw_stats");
-          if (raw) {
-            // small delay so UI is stable
-            setTimeout(() => openPanel(), 650);
-          }
-        } catch (_) {}
-      })();
     </script>
 
     <!-- App logic -->
