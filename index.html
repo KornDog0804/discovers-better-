@@ -6,7 +6,7 @@
   <title>Vinyl Therapy</title>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/src/style.css" />
 
   <!-- Cloudflare Web Analytics -->
   <script
@@ -24,10 +24,13 @@
     <div class="splash">
       <div class="splash-inner">
         <div class="splash-ring"></div>
-        <div class="splash-kicker">VINYL THERAPY</div>
-        <div class="splash-name">Your Collection</div>
-        <div class="splash-tag">Fast. Visual. Addictive.</div>
-        <div class="splash-hint">Loading your wall…</div>
+        <div class="splash-kicker">DROP THE NEEDLE</div>
+        <div class="splash-name">VinylWall</div>
+        <div class="splash-tag">
+          Your collection isn't data.<br />
+          It's taste.
+        </div>
+        <div class="splash-hint">Load your Discogs. Let it spin.</div>
       </div>
     </div>
 
@@ -37,38 +40,38 @@
 
         <div class="brand">
           <div class="turntable">
-            <div class="logo"></div>
-            <div class="tonearm"></div>
+            <div class="logo vinyl-spin"></div>
           </div>
-          <div class="brand-text">
-            <h1>Vinyl Therapy</h1>
-            <p class="sub">A visual wall for your Discogs collection.</p>
+          <div>
+            <h1>VinylWall</h1>
+            <p class="sub">Drop the needle on your Discogs collection.</p>
           </div>
         </div>
 
         <div class="controls">
           <div class="row">
-            <input id="username" placeholder="Discogs username…" />
-            <button id="loadBtn">Load</button>
+            <input id="username" type="text" placeholder="Discogs username" autocomplete="off" />
+            <button id="go">Load</button>
           </div>
+
           <div class="row">
-            <input id="search" placeholder="Search artist / title…" />
+            <input id="search" type="text" placeholder="Search artist / title…" autocomplete="off" />
             <select id="sort">
-              <option value="recent">Recently added</option>
-              <option value="artist">Artist</option>
-              <option value="title">Title</option>
-              <option value="year">Year</option>
+              <option value="added_desc">Recently added</option>
+              <option value="artist_asc">Artist A → Z</option>
+              <option value="title_asc">Title A → Z</option>
+              <option value="year_desc">Year (new → old)</option>
+              <option value="year_asc">Year (old → new)</option>
             </select>
-            <button id="shuffle">Shuffle</button>
-          </div>
-          <div class="row">
+
+            <button id="shuffle" class="ghost">Shuffle</button>
             <button id="clear" class="ghost">Clear cache</button>
-            <button id="share" class="ghost">Share your wall</button>
+            <button id="shareWall" class="ghost">Share your wall</button>
           </div>
 
           <div class="status">
-            <span id="status">Enter a username and hit Load.</span>
-            <span id="count"></span>
+            <span id="statusText">Enter a username and hit Load.</span>
+            <span id="countText"></span>
           </div>
         </div>
 
@@ -80,36 +83,67 @@
       <div id="grid" class="grid"></div>
     </main>
 
-    <!-- Footer (UPDATED OWNERSHIP) -->
+    <!-- Footer -->
     <footer class="footer">
-      <div>
-        Built and curated by Joey “KornDog” Begley. Original concept by Skye Klein.
-        <br />
-        <a class="drink-link" href="mailto:korndogrecords@gmail.com">
-          Buy the builder a drink <span id="beer">🍺</span>
-        </a>
+      <div style="text-align: center; line-height: 1.6;">
+        <div>
+          Inspired by the original concept by <strong>Skye Klein</strong>.
+        </div>
+
+        <div>
+          Built by
+          <a href="https://korndogrecords.com" target="_blank" rel="noopener">
+            KornDog Records
+          </a>.
+        </div>
+
+        <div style="margin-top: 6px;">
+          <a
+            id="drinkLink"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="drink-link"
+          >
+            Buy the builder a drink <span id="beer">🍺</span>
+          </a>
+          &nbsp;•&nbsp;
+          <a href="mailto:korndogrecords@gmail.com">korndogrecords@gmail.com</a>
+        </div>
       </div>
     </footer>
 
   </div>
 
+  <!-- Cheers toast notification -->
+  <div id="cheersToast" class="cheers-toast" hidden></div>
+
   <!-- Modal -->
   <div id="modal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div id="modalBackdrop" class="modal-backdrop"></div>
     <div class="modal-card">
-      <button class="modal-close" id="modalClose">✕</button>
+      <button id="modalClose" class="modal-close">✕</button>
       <div class="modal-body">
-        <img id="modalImg" />
+        <img id="modalImg" src="" alt="" />
         <div class="modal-meta">
-          <div class="modal-title" id="modalTitle"></div>
-          <div class="modal-artist" id="modalArtist"></div>
-          <div class="modal-year" id="modalYear"></div>
-          <div class="modal-format" id="modalFormat"></div>
-          <a id="modalLink" class="modal-link" target="_blank">View on Discogs ↗</a>
+          <div id="modalTitle" class="modal-title"></div>
+          <div id="modalArtist" class="modal-artist"></div>
+          <div id="modalYear" class="modal-year"></div>
+          <div id="modalFormat" class="modal-format"></div>
+          <a id="modalLink" href="#" target="_blank" rel="noopener" class="modal-link">
+            Open on Discogs ↗
+          </a>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Splash timing (3.5s) -->
+  <script>
+    setTimeout(() => {
+      document.body.classList.add("splash-done");
+    }, 3500);
+  </script>
 
   <!-- App logic -->
   <script type="module" src="/src/main.js"></script>
