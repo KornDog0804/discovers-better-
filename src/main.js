@@ -6,15 +6,12 @@ const els = {
   search: document.getElementById("search"),
   sort: document.getElementById("sort"),
   shuffle: document.getElementById("shuffle"),
-  viewMode: document.getElementById("viewMode"),
+  viewMode: document.getElementById("viewMode"), // Collage button
   downloadImage: document.getElementById("downloadImage"),
   clear: document.getElementById("clear"),
   statusText: document.getElementById("statusText"),
   countText: document.getElementById("countText"),
   grid: document.getElementById("grid"),
-
-  tokenHint: document.getElementById("tokenHint"),
-  setToken: document.getElementById("setToken"),
   shareWall: document.getElementById("shareWall"),
 
   modal: document.getElementById("modal"),
@@ -34,6 +31,10 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
 const PAYPAL_EMAIL = "titans.rule1215@gmail.com";
 const DEFAULT_DRINK_USD = "5.00";
 
+// Share-safe export sizing
+const EXPORT_MAX_DIM = 3000;     // square-ish max pixels; auto-shrinks tiles to fit
+const EXPORT_JPEG_QUALITY = 0.92;
+
 let allItems = [];
 let viewItems = [];
 let observer = null;
@@ -45,7 +46,6 @@ let collageOn = false;
 const STATS_KEY = "vw_stats";
 
 function stripDiscogsSuffix(name) {
-  // "Metallica (2)" -> "Metallica"
   return String(name || "").replace(/\s\(\d+\)$/, "").trim();
 }
 
@@ -216,6 +216,12 @@ function ensureStatsUI() {
       padding: 0 14px 12px;
       font-size: 12px; opacity:.55;
     }
+
+    /* Privacy mode: hide/obscure username field */
+    body.privacy-mode #username{
+      -webkit-text-security: disc;
+      text-security: disc;
+    }
   `;
   document.head.appendChild(style);
 
@@ -302,9 +308,17 @@ function ensureStatsUI() {
   });
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function renderStatsOverlay(username, items) {
   ensureStatsUI();
-
   const stats = computeCollectionStats(items);
   saveStats(username, stats);
 
@@ -333,8 +347,6 @@ function renderStatsOverlay(username, items) {
       }
     }
   }
-
-  return stats;
 }
 
 function hydrateStatsFromStorage() {
@@ -377,6 +389,7 @@ function hydrateStatsFromStorage() {
 function setLoading(on) {
   document.body.classList.toggle("is-loading", !!on);
   if (els.go) els.go.disabled = !!on;
+  if (els.downloadImage) els.downloadImage.disabled = !!on;
 }
 
 // -------------------- CACHE --------------------
@@ -414,15 +427,6 @@ function clearAllCaches() {
 function setStatus(text, count = "") {
   if (els.statusText) els.statusText.textContent = text;
   if (els.countText) els.countText.textContent = count;
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 // -------------------- FORMATTERS --------------------
@@ -549,19 +553,17 @@ function createObserver() {
   );
 }
 
-// -------------------- OPEN DISCOGS (hard-mode safe) --------------------
+// -------------------- OPEN DISCOGS --------------------
 function openDiscogs(url) {
   if (!url) return;
-
   try {
     const w = window.open(url, "_blank", "noopener,noreferrer");
     if (w) return;
   } catch {}
-
   location.href = url;
 }
 
-// -------------------- MODAL (optional) --------------------
+// -------------------- MODAL --------------------
 let currentModalUrl = "";
 
 function openModal(item) {
@@ -634,6 +636,7 @@ function renderGrid(items) {
     img.dataset.src = item.cover || "";
     img.alt = `${item.artist} — ${item.title}`;
     img.loading = "lazy";
+    img.crossOrigin = "anonymous"; // helps export in many cases
 
     const badge = document.createElement("div");
     badge.className = "badge";
@@ -648,6 +651,7 @@ function renderGrid(items) {
 
     tile.addEventListener("click", () => openDiscogs(item.discogsUrl));
 
+    // Long press -> modal (optional)
     let pressTimer = null;
     tile.addEventListener(
       "touchstart",
@@ -742,20 +746,14 @@ function setUserInUrl(username) {
   history.replaceState({}, "", u.toString());
 }
 
-// -------------------- SHARE WALL --------------------
+// -------------------- SHARE WALL (Reddit-safe) --------------------
 async function shareWall() {
-  const username = (els.username?.value || "").trim();
-  if (!username) {
-    alert("Enter a Discogs username first.");
-    return;
-  }
-
-  // ✅ REDDIT-SAFE: do NOT include ?user= in the shared link
+  // ✅ do NOT include ?user= in the shared link
   const shareUrl = `${location.origin}${location.pathname}`;
 
   const shareData = {
-    title: "My VinylWall",
-    text: `Drop the needle on my Discogs wall.`,
+    title: "VinylWall",
+    text: "Drop the needle on my Discogs wall.",
     url: shareUrl,
   };
 
@@ -776,7 +774,7 @@ async function shareWall() {
   }
 }
 
-// -------------------- PAYPAL FALLBACK --------------------
+// -------------------- PAYPAL --------------------
 function paypalDonateUrl() {
   const base = "https://www.paypal.com/donate";
   const u = new URL(base);
@@ -889,59 +887,185 @@ function needleDropSound() {
   } catch {}
 }
 
-// -------------------- DOWNLOAD AS IMAGE --------------------
-async function downloadCollectionImage() {
-  const downloadBtn = els.downloadImage;
-  if (!downloadBtn) return;
+// -------------------- EXPORT IMAGE (NOT blank + share-sized + 500+ auto-fit) --------------------
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
 
-  const grid = els.grid;
-  if (!grid || !allItems.length) {
+function loadImage(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+    img.loading = "eager";
+    img.referrerPolicy = "no-referrer";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+function computeExportLayout(n, maxDim) {
+  // Goal: keep within maxDim x maxDim by increasing cols until height fits
+  if (n <= 0) return null;
+
+  const pad = Math.round(maxDim * 0.04); // 4% padding
+  let cols = Math.ceil(Math.sqrt(n));
+  cols = Math.max(3, cols);
+
+  while (true) {
+    const rows = Math.ceil(n / cols);
+    const gap = Math.max(6, Math.round(maxDim * 0.006)); // tiny gap
+    const tile = Math.floor((maxDim - pad * 2 - gap * (cols - 1)) / cols);
+    const w = pad * 2 + cols * tile + gap * (cols - 1);
+    const h = pad * 2 + rows * tile + gap * (rows - 1);
+
+    if (tile <= 10) {
+      // Too tiny; give up gracefully
+      return { cols, rows, tile: 10, gap, pad, w: maxDim, h: maxDim };
+    }
+
+    if (h <= maxDim) {
+      return { cols, rows, tile, gap, pad, w, h };
+    }
+
+    cols += 1; // more columns => fewer rows => smaller height
+    if (cols > n) break;
+  }
+
+  // fallback
+  const rows = 1;
+  const gap = Math.max(6, Math.round(maxDim * 0.006));
+  const tile = Math.floor((maxDim - 40) / n);
+  return { cols: n, rows, tile, gap, pad: 20, w: maxDim, h: maxDim };
+}
+
+async function downloadCollectionImage() {
+  const btn = els.downloadImage;
+  if (!btn) return;
+
+  if (!viewItems.length) {
     alert("Load a collection first!");
     return;
   }
 
-  const originalText = downloadBtn.textContent;
-  downloadBtn.textContent = "Creating image...";
-  downloadBtn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = "Creating image...";
+  btn.disabled = true;
 
   try {
-    // Hide badges for a clean image
-    const badges = grid.querySelectorAll(".badge");
-    badges.forEach((b) => (b.style.display = "none"));
+    // Use what's currently shown (search/sort applied)
+    const items = viewItems.slice(0, 5000); // safety cap
 
-    await new Promise((r) => setTimeout(r, 80));
+    const layout = computeExportLayout(items.length, EXPORT_MAX_DIM);
+    if (!layout) throw new Error("No items to export.");
 
-    // eslint-disable-next-line no-undef
-    const canvas = await html2canvas(grid, {
-      backgroundColor: "#0b0b0e",
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      allowTaint: true,
-    });
+    const canvas = document.createElement("canvas");
+    canvas.width = layout.w;
+    canvas.height = layout.h;
 
-    badges.forEach((b) => (b.style.display = ""));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas unsupported.");
 
-    canvas.toBlob((blob) => {
-      if (!blob) throw new Error("Failed to create image blob.");
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
+    // Background
+    ctx.fillStyle = "#0b0b0e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const username = (els.username?.value || "collection").trim() || "collection";
-      link.download = `vinylwall-${username}-${Date.now()}.png`;
-      link.href = url;
-      link.click();
+    const radius = Math.max(8, Math.round(layout.tile * 0.12));
 
-      URL.revokeObjectURL(url);
+    // Load images in batches so mobile doesn’t explode
+    const batchSize = 24;
+    const imgs = new Array(items.length).fill(null);
 
-      downloadBtn.textContent = originalText;
-      downloadBtn.disabled = false;
-    });
-  } catch (error) {
-    console.error("Download failed:", error);
-    alert("Failed to create image. Try again!");
-    downloadBtn.textContent = originalText;
-    downloadBtn.disabled = false;
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      const loaded = await Promise.all(batch.map((it) => loadImage(it.cover)));
+      for (let k = 0; k < loaded.length; k++) imgs[i + k] = loaded[k];
+    }
+
+    // Draw tiles
+    for (let i = 0; i < items.length; i++) {
+      const r = Math.floor(i / layout.cols);
+      const c = i % layout.cols;
+
+      const x = layout.pad + c * (layout.tile + layout.gap);
+      const y = layout.pad + r * (layout.tile + layout.gap);
+
+      // tile shadow-ish base
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "#000000";
+      roundRectPath(ctx, x + 2, y + 3, layout.tile, layout.tile, radius);
+      ctx.fill();
+      ctx.restore();
+
+      // tile clip
+      ctx.save();
+      roundRectPath(ctx, x, y, layout.tile, layout.tile, radius);
+      ctx.clip();
+
+      const img = imgs[i];
+      if (img) {
+        // cover fill
+        ctx.drawImage(img, x, y, layout.tile, layout.tile);
+      } else {
+        // fallback block
+        ctx.fillStyle = "#14141a";
+        ctx.fillRect(x, y, layout.tile, layout.tile);
+      }
+
+      ctx.restore();
+
+      // subtle border
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 2;
+      roundRectPath(ctx, x, y, layout.tile, layout.tile, radius);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // watermark (no username)
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = "700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    ctx.textAlign = "right";
+    ctx.fillText('VinylWall • Joey "KornDog" Begley', canvas.width - 18, canvas.height - 18);
+    ctx.restore();
+
+    // Export JPEG (smaller than PNG)
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", EXPORT_JPEG_QUALITY)
+    );
+    if (!blob) throw new Error("Failed to create image.");
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+
+    // filename (keeps username locally, doesn’t expose it on the image)
+    const uname = (els.username?.value || "collection").trim() || "collection";
+    a.download = `vinylwall-${uname}-${Date.now()}.jpg`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    btn.textContent = original;
+    btn.disabled = false;
+  } catch (e) {
+    console.error(e);
+    alert(`Download failed: ${String(e?.message || e)}`);
+    btn.textContent = original;
+    btn.disabled = false;
   }
 }
 
@@ -978,22 +1102,17 @@ async function loadUser(username) {
 
 // -------------------- INIT --------------------
 function init() {
-  if (els.tokenHint) els.tokenHint.textContent = "";
-  if (els.setToken) els.setToken.style.display = "none";
-
-  // Return visitors: show saved stats
   hydrateStatsFromStorage();
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
-  // ✅ Collage toggle = Privacy toggle
+  // Collage = privacy mode toggle
   if (els.viewMode) {
     els.viewMode.addEventListener("click", () => {
       collageOn = !collageOn;
-
-      // Privacy mode ON during collage
       document.body.classList.toggle("privacy-mode", collageOn);
 
+      // button label flips
       els.viewMode.textContent = collageOn ? "Grid" : "Collage";
       if (allItems.length) applyFilters();
     });
@@ -1021,8 +1140,7 @@ function init() {
       const username = (els.username?.value || "").trim();
       if (!username) return;
 
-      // You can keep this for YOUR personal convenience.
-      // Reddit-safe sharing already removes it from copied links.
+      // keep for convenience; share link does NOT include it
       setUserInUrl(username);
 
       try {
