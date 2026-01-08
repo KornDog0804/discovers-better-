@@ -14,7 +14,6 @@
     src="https://static.cloudflareinsights.com/beacon.min.js"
     data-cf-beacon='{"token":"67ac85bd95804be69d28961ad0a318b7"}'>
   </script>
-  <!-- End Cloudflare Web Analytics -->
 </head>
 
 <body>
@@ -41,10 +40,14 @@
         <div class="brand">
           <div class="turntable">
             <div class="logo vinyl-spin"></div>
+            <div class="tonearm"></div>
           </div>
           <div>
             <h1>VinylWall</h1>
             <p class="sub">Drop the needle on your Discogs collection.</p>
+
+            <!-- Optional tiny label (we’ll hide this in privacy mode) -->
+            <p id="loadedLabel" class="sub" style="margin-top:6px; opacity:.6;"></p>
           </div>
         </div>
 
@@ -52,6 +55,9 @@
           <div class="row">
             <input id="username" type="text" placeholder="Discogs username" autocomplete="off" />
             <button id="go">Load</button>
+
+            <!-- ✅ THIS WAS MISSING -->
+            <button id="viewMode" class="ghost">Collage</button>
           </div>
 
           <div class="row">
