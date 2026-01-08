@@ -809,3 +809,14 @@ body.splash-done .splash {
 #modal .modal-inner, #modal .modal-content { position: relative; z-index: 3; }
 #modalLink { position: relative; z-index: 4; pointer-events: auto; }
 #modalImg { cursor: pointer; }
+/* =========================
+   Privacy Mode (Collage)
+   ========================= */
+body.privacy-mode #username{
+  color: transparent !important;
+  text-shadow: none !important;
+  caret-color: transparent !important;
+}
+body.privacy-mode #loadedLabel{
+  display: none !important;
+}
