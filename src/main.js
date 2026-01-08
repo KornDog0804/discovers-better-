@@ -1,17 +1,30 @@
 import "./style.css";
 
+/* =========================================================
+   VinylWall - main.js
+   Fixes:
+   ✅ Live covers load normally (no crossOrigin on live images)
+   ✅ Download Image exports a compact collage and AUTO-SHRINKS
+   ✅ Download uses Netlify image proxy to bypass Discogs CORS
+   ✅ Share link Reddit-safe (no username in URL)
+   ✅ Collage = Privacy Mode (strips ?user= when enabled)
+   ========================================================= */
+
 const els = {
   username: document.getElementById("username"),
   go: document.getElementById("go"),
   search: document.getElementById("search"),
   sort: document.getElementById("sort"),
   shuffle: document.getElementById("shuffle"),
-  viewMode: document.getElementById("viewMode"), // Collage button
+  viewMode: document.getElementById("viewMode"),
   downloadImage: document.getElementById("downloadImage"),
   clear: document.getElementById("clear"),
   statusText: document.getElementById("statusText"),
   countText: document.getElementById("countText"),
   grid: document.getElementById("grid"),
+
+  tokenHint: document.getElementById("tokenHint"),
+  setToken: document.getElementById("setToken"),
   shareWall: document.getElementById("shareWall"),
 
   modal: document.getElementById("modal"),
@@ -30,10 +43,6 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
 
 const PAYPAL_EMAIL = "titans.rule1215@gmail.com";
 const DEFAULT_DRINK_USD = "5.00";
-
-// Share-safe export sizing
-const EXPORT_MAX_DIM = 3000;     // square-ish max pixels; auto-shrinks tiles to fit
-const EXPORT_JPEG_QUALITY = 0.92;
 
 let allItems = [];
 let viewItems = [];
@@ -216,12 +225,6 @@ function ensureStatsUI() {
       padding: 0 14px 12px;
       font-size: 12px; opacity:.55;
     }
-
-    /* Privacy mode: hide/obscure username field */
-    body.privacy-mode #username{
-      -webkit-text-security: disc;
-      text-security: disc;
-    }
   `;
   document.head.appendChild(style);
 
@@ -319,6 +322,7 @@ function escapeHtml(str) {
 
 function renderStatsOverlay(username, items) {
   ensureStatsUI();
+
   const stats = computeCollectionStats(items);
   saveStats(username, stats);
 
@@ -347,6 +351,8 @@ function renderStatsOverlay(username, items) {
       }
     }
   }
+
+  return stats;
 }
 
 function hydrateStatsFromStorage() {
@@ -389,7 +395,6 @@ function hydrateStatsFromStorage() {
 function setLoading(on) {
   document.body.classList.toggle("is-loading", !!on);
   if (els.go) els.go.disabled = !!on;
-  if (els.downloadImage) els.downloadImage.disabled = !!on;
 }
 
 // -------------------- CACHE --------------------
@@ -452,8 +457,12 @@ function normalizeItem(entry) {
 
   const uri = entry?.uri || "";
   const discogsUrl = uri
-    ? (uri.startsWith("http") ? uri : `https://www.discogs.com${uri}`)
-    : (releaseId ? `https://www.discogs.com/release/${releaseId}` : "");
+    ? uri.startsWith("http")
+      ? uri
+      : `https://www.discogs.com${uri}`
+    : releaseId
+      ? `https://www.discogs.com/release/${releaseId}`
+      : "";
 
   return {
     id: entry?.id ?? releaseId ?? (globalThis.crypto?.randomUUID?.() || String(Math.random())),
@@ -626,17 +635,14 @@ function renderGrid(items) {
     tile.className = "tile";
     tile.title = `${item.artist} — ${item.title}`;
 
-    if (collageOn) {
-      tile.style.setProperty("--tilt", `${deterministicTilt(String(item.id))}deg`);
-    } else {
-      tile.style.removeProperty("--tilt");
-    }
+    if (collageOn) tile.style.setProperty("--tilt", `${deterministicTilt(String(item.id))}deg`);
+    else tile.style.removeProperty("--tilt");
 
     const img = document.createElement("img");
     img.dataset.src = item.cover || "";
     img.alt = `${item.artist} — ${item.title}`;
     img.loading = "lazy";
-    img.crossOrigin = "anonymous"; // helps export in many cases
+    // ✅ Do NOT set crossOrigin on LIVE images (can break loading)
 
     const badge = document.createElement("div");
     badge.className = "badge";
@@ -651,13 +657,10 @@ function renderGrid(items) {
 
     tile.addEventListener("click", () => openDiscogs(item.discogsUrl));
 
-    // Long press -> modal (optional)
     let pressTimer = null;
     tile.addEventListener(
       "touchstart",
-      () => {
-        pressTimer = setTimeout(() => openModal(item), 450);
-      },
+      () => (pressTimer = setTimeout(() => openModal(item), 450)),
       { passive: true }
     );
     tile.addEventListener("touchend", () => {
@@ -746,16 +749,16 @@ function setUserInUrl(username) {
   history.replaceState({}, "", u.toString());
 }
 
+function stripUserFromUrl() {
+  const u = new URL(location.href);
+  u.searchParams.delete("user");
+  history.replaceState({}, "", u.toString());
+}
+
 // -------------------- SHARE WALL (Reddit-safe) --------------------
 async function shareWall() {
-  // ✅ do NOT include ?user= in the shared link
   const shareUrl = `${location.origin}${location.pathname}`;
-
-  const shareData = {
-    title: "VinylWall",
-    text: "Drop the needle on my Discogs wall.",
-    url: shareUrl,
-  };
+  const shareData = { title: "VinylWall", text: `Drop the needle on my wall.`, url: shareUrl };
 
   try {
     if (navigator.share) {
@@ -774,7 +777,7 @@ async function shareWall() {
   }
 }
 
-// -------------------- PAYPAL --------------------
+// -------------------- PAYPAL FALLBACK --------------------
 function paypalDonateUrl() {
   const base = "https://www.paypal.com/donate";
   const u = new URL(base);
@@ -822,7 +825,6 @@ function needleDropSound() {
     audioCtx = audioCtx || new Ctx();
 
     const now = audioCtx.currentTime;
-
     const master = audioCtx.createGain();
     master.gain.setValueAtTime(0.0, now);
     master.gain.linearRampToValueAtTime(0.9, now + 0.01);
@@ -872,199 +874,194 @@ function needleDropSound() {
 
     noise.start(now);
     noise.stop(now + 0.23);
-
-    const hum = audioCtx.createOscillator();
-    hum.type = "sine";
-    hum.frequency.setValueAtTime(40, now);
-    const humGain = audioCtx.createGain();
-    humGain.gain.setValueAtTime(0.0, now);
-    humGain.gain.linearRampToValueAtTime(0.12, now + 0.02);
-    humGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-    hum.connect(humGain);
-    humGain.connect(master);
-    hum.start(now);
-    hum.stop(now + 0.36);
   } catch {}
 }
 
-// -------------------- EXPORT IMAGE (NOT blank + share-sized + 500+ auto-fit) --------------------
-function roundRectPath(ctx, x, y, w, h, r) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
+// =========================================================
+// DOWNLOAD AS IMAGE (compact + auto-shrink + PROXY)
+// =========================================================
+
+function calcExportLayout(n, targetWidth = 2048) {
+  const cols = Math.max(5, Math.ceil(Math.sqrt(n)));
+  const rows = Math.ceil(n / cols);
+
+  let tile = Math.floor(targetWidth / cols);
+  const minTile = 26;
+  if (tile < minTile) tile = minTile;
+
+  const width = cols * tile;
+  const height = rows * tile;
+
+  return { cols, rows, tile, width, height };
 }
 
-function loadImage(url) {
-  return new Promise((resolve) => {
-    if (!url) return resolve(null);
-    const img = new Image();
-    img.crossOrigin = "anonymous";
+function proxyCoverUrl(originalUrl) {
+  const u = String(originalUrl || "").trim();
+  if (!u) return "";
+  // Route through our Netlify function so the canvas export can capture it.
+  return `/.netlify/functions/img-proxy?url=${encodeURIComponent(u)}`;
+}
+
+function buildExportStage(items) {
+  const old = document.getElementById("vwExportStage");
+  if (old) old.remove();
+
+  const stage = document.createElement("div");
+  stage.id = "vwExportStage";
+  stage.style.position = "fixed";
+  stage.style.left = "-10000px";
+  stage.style.top = "0";
+  stage.style.opacity = "0.0001";
+  stage.style.pointerEvents = "none";
+  stage.style.zIndex = "-1";
+
+  const inner = document.createElement("div");
+  inner.id = "vwExportInner";
+  inner.style.background = "#0b0b0e";
+  inner.style.display = "grid";
+  inner.style.gap = "0px";
+  inner.style.boxSizing = "border-box";
+  inner.style.padding = "0px";
+  inner.style.margin = "0px";
+
+  stage.appendChild(inner);
+  document.body.appendChild(stage);
+
+  for (const it of items) {
+    const cell = document.createElement("div");
+    cell.style.overflow = "hidden";
+    cell.style.background = "rgba(255,255,255,0.04)";
+    cell.style.border = "1px solid rgba(255,255,255,0.06)";
+    cell.style.boxSizing = "border-box";
+
+    const img = document.createElement("img");
+
+    // ✅ PROXY URL HERE (the whole fix)
+    img.src = proxyCoverUrl(it.cover);
+
+    img.alt = "";
     img.decoding = "async";
     img.loading = "eager";
-    img.referrerPolicy = "no-referrer";
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "cover";
+    img.style.display = "block";
 
-function computeExportLayout(n, maxDim) {
-  // Goal: keep within maxDim x maxDim by increasing cols until height fits
-  if (n <= 0) return null;
+    // With proxy, crossOrigin is safe (same-origin path)
+    img.crossOrigin = "anonymous";
 
-  const pad = Math.round(maxDim * 0.04); // 4% padding
-  let cols = Math.ceil(Math.sqrt(n));
-  cols = Math.max(3, cols);
-
-  while (true) {
-    const rows = Math.ceil(n / cols);
-    const gap = Math.max(6, Math.round(maxDim * 0.006)); // tiny gap
-    const tile = Math.floor((maxDim - pad * 2 - gap * (cols - 1)) / cols);
-    const w = pad * 2 + cols * tile + gap * (cols - 1);
-    const h = pad * 2 + rows * tile + gap * (rows - 1);
-
-    if (tile <= 10) {
-      // Too tiny; give up gracefully
-      return { cols, rows, tile: 10, gap, pad, w: maxDim, h: maxDim };
-    }
-
-    if (h <= maxDim) {
-      return { cols, rows, tile, gap, pad, w, h };
-    }
-
-    cols += 1; // more columns => fewer rows => smaller height
-    if (cols > n) break;
+    cell.appendChild(img);
+    inner.appendChild(cell);
   }
 
-  // fallback
-  const rows = 1;
-  const gap = Math.max(6, Math.round(maxDim * 0.006));
-  const tile = Math.floor((maxDim - 40) / n);
-  return { cols: n, rows, tile, gap, pad: 20, w: maxDim, h: maxDim };
+  return stage;
+}
+
+async function waitForExportImages(stage, timeoutMs = 12000) {
+  const imgs = [...stage.querySelectorAll("img")];
+  if (!imgs.length) return;
+
+  const start = Date.now();
+
+  await Promise.all(
+    imgs.map(
+      (img) =>
+        new Promise((resolve) => {
+          const done = () => resolve();
+
+          if (img.complete && img.naturalWidth > 0) return resolve();
+
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+
+          const tick = () => {
+            if (Date.now() - start > timeoutMs) return done();
+            if (img.complete) return done();
+            setTimeout(tick, 120);
+          };
+          tick();
+        })
+    )
+  );
 }
 
 async function downloadCollectionImage() {
   const btn = els.downloadImage;
   if (!btn) return;
 
-  if (!viewItems.length) {
+  const items = viewItems.length ? viewItems : allItems;
+  if (!items.length) {
     alert("Load a collection first!");
     return;
   }
 
-  const original = btn.textContent;
+  const originalText = btn.textContent;
   btn.textContent = "Creating image...";
   btn.disabled = true;
 
   try {
-    // Use what's currently shown (search/sort applied)
-    const items = viewItems.slice(0, 5000); // safety cap
+    const stage = buildExportStage(items);
+    const inner = stage.querySelector("#vwExportInner");
 
-    const layout = computeExportLayout(items.length, EXPORT_MAX_DIM);
-    if (!layout) throw new Error("No items to export.");
+    const layout = calcExportLayout(items.length, 2048);
 
-    const canvas = document.createElement("canvas");
-    canvas.width = layout.w;
-    canvas.height = layout.h;
+    inner.style.gridTemplateColumns = `repeat(${layout.cols}, ${layout.tile}px)`;
+    inner.style.width = `${layout.width}px`;
+    inner.style.height = `${layout.height}px`;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas unsupported.");
-
-    // Background
-    ctx.fillStyle = "#0b0b0e";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const radius = Math.max(8, Math.round(layout.tile * 0.12));
-
-    // Load images in batches so mobile doesn’t explode
-    const batchSize = 24;
-    const imgs = new Array(items.length).fill(null);
-
-    for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize);
-      const loaded = await Promise.all(batch.map((it) => loadImage(it.cover)));
-      for (let k = 0; k < loaded.length; k++) imgs[i + k] = loaded[k];
+    const cells = inner.children;
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      c.style.width = `${layout.tile}px`;
+      c.style.height = `${layout.tile}px`;
+      c.style.borderRadius = layout.tile >= 48 ? "10px" : "8px";
     }
 
-    // Draw tiles
-    for (let i = 0; i < items.length; i++) {
-      const r = Math.floor(i / layout.cols);
-      const c = i % layout.cols;
+    await waitForExportImages(stage, 12000);
 
-      const x = layout.pad + c * (layout.tile + layout.gap);
-      const y = layout.pad + r * (layout.tile + layout.gap);
+    // eslint-disable-next-line no-undef
+    const canvas = await html2canvas(inner, {
+      backgroundColor: "#0b0b0e",
+      scale: 1,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      imageTimeout: 12000,
+    });
 
-      // tile shadow-ish base
-      ctx.save();
-      ctx.globalAlpha = 0.35;
-      ctx.fillStyle = "#000000";
-      roundRectPath(ctx, x + 2, y + 3, layout.tile, layout.tile, radius);
-      ctx.fill();
-      ctx.restore();
+    const username = (els.username?.value || "collection").trim() || "collection";
+    const filename = `vinylwall-${username}-${items.length}-${Date.now()}.jpg`;
 
-      // tile clip
-      ctx.save();
-      roundRectPath(ctx, x, y, layout.tile, layout.tile, radius);
-      ctx.clip();
+    const quality =
+      items.length >= 1000 ? 0.76 :
+      items.length >= 500 ? 0.80 :
+      0.86;
 
-      const img = imgs[i];
-      if (img) {
-        // cover fill
-        ctx.drawImage(img, x, y, layout.tile, layout.tile);
-      } else {
-        // fallback block
-        ctx.fillStyle = "#14141a";
-        ctx.fillRect(x, y, layout.tile, layout.tile);
-      }
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) throw new Error("Failed to create image blob.");
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
 
-      ctx.restore();
-
-      // subtle border
-      ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth = 2;
-      roundRectPath(ctx, x, y, layout.tile, layout.tile, radius);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // watermark (no username)
-    ctx.save();
-    ctx.globalAlpha = 0.65;
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.font = "700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    ctx.textAlign = "right";
-    ctx.fillText('VinylWall • Joey "KornDog" Begley', canvas.width - 18, canvas.height - 18);
-    ctx.restore();
-
-    // Export JPEG (smaller than PNG)
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", EXPORT_JPEG_QUALITY)
+        stage.remove();
+        btn.textContent = originalText;
+        btn.disabled = false;
+      },
+      "image/jpeg",
+      quality
     );
-    if (!blob) throw new Error("Failed to create image.");
+  } catch (err) {
+    console.error("Download failed:", err);
+    alert("Download failed. Try again.");
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
+    const stage = document.getElementById("vwExportStage");
+    if (stage) stage.remove();
 
-    // filename (keeps username locally, doesn’t expose it on the image)
-    const uname = (els.username?.value || "collection").trim() || "collection";
-    a.download = `vinylwall-${uname}-${Date.now()}.jpg`;
-    a.click();
-
-    URL.revokeObjectURL(url);
-
-    btn.textContent = original;
-    btn.disabled = false;
-  } catch (e) {
-    console.error(e);
-    alert(`Download failed: ${String(e?.message || e)}`);
-    btn.textContent = original;
+    btn.textContent = originalText;
     btn.disabled = false;
   }
 }
@@ -1079,7 +1076,6 @@ async function loadUser(username) {
     setStatus("Loaded.", `${allItems.length} total`);
     applyFilters();
     needleDropSound();
-
     renderStatsOverlay(username, viewItems.length ? viewItems : allItems);
     return;
   }
@@ -1093,7 +1089,6 @@ async function loadUser(username) {
     setStatus("Loaded.", `${items.length} total`);
     applyFilters();
     needleDropSound();
-
     renderStatsOverlay(username, viewItems.length ? viewItems : allItems);
   } finally {
     setLoading(false);
@@ -1102,17 +1097,18 @@ async function loadUser(username) {
 
 // -------------------- INIT --------------------
 function init() {
+  if (els.tokenHint) els.tokenHint.textContent = "";
+  if (els.setToken) els.setToken.style.display = "none";
+
   hydrateStatsFromStorage();
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
-  // Collage = privacy mode toggle
   if (els.viewMode) {
     els.viewMode.addEventListener("click", () => {
       collageOn = !collageOn;
       document.body.classList.toggle("privacy-mode", collageOn);
-
-      // button label flips
+      if (collageOn) stripUserFromUrl();
       els.viewMode.textContent = collageOn ? "Grid" : "Collage";
       if (allItems.length) applyFilters();
     });
@@ -1140,8 +1136,7 @@ function init() {
       const username = (els.username?.value || "").trim();
       if (!username) return;
 
-      // keep for convenience; share link does NOT include it
-      setUserInUrl(username);
+      if (!collageOn) setUserInUrl(username);
 
       try {
         await loadUser(username);
