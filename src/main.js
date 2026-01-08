@@ -7,6 +7,7 @@ const els = {
   sort: document.getElementById("sort"),
   shuffle: document.getElementById("shuffle"),
   viewMode: document.getElementById("viewMode"),
+  downloadImage: document.getElementById("downloadImage"),
   clear: document.getElementById("clear"),
   statusText: document.getElementById("statusText"),
   countText: document.getElementById("countText"),
@@ -100,7 +101,6 @@ function readStats() {
 }
 
 function ensureStatsUI() {
-  // If user already has a stats UI from prior edits, don’t duplicate.
   if (document.getElementById("vwStatsPanel")) return;
 
   const style = document.createElement("style");
@@ -446,7 +446,6 @@ function normalizeItem(entry) {
   const bi = entry?.basic_information || {};
   const releaseId = bi?.id || null;
 
-  // BEST: Discogs gives entry.uri like "/release/12345"
   const uri = entry?.uri || "";
   const discogsUrl = uri
     ? (uri.startsWith("http") ? uri : `https://www.discogs.com${uri}`)
@@ -554,13 +553,11 @@ function createObserver() {
 function openDiscogs(url) {
   if (!url) return;
 
-  // If you REALLY want new tab behavior, keep this first:
   try {
     const w = window.open(url, "_blank", "noopener,noreferrer");
     if (w) return;
   } catch {}
 
-  // Fallback that ALWAYS works:
   location.href = url;
 }
 
@@ -649,10 +646,8 @@ function renderGrid(items) {
     tile.appendChild(img);
     tile.appendChild(badge);
 
-    // ✅ MAIN ACTION: tap opens Discogs release page
     tile.addEventListener("click", () => openDiscogs(item.discogsUrl));
 
-    // Optional: long-press opens modal (for details)
     let pressTimer = null;
     tile.addEventListener(
       "touchstart",
@@ -716,7 +711,6 @@ function applyFilters() {
   renderGrid(viewItems);
   setStatus("Loaded.", `${viewItems.length} shown`);
 
-  // ✅ Update stats based on what's currently shown (search/sort affects this)
   const currentUser = (els.username?.value || "").trim();
   if (currentUser && viewItems.length) renderStatsOverlay(currentUser, viewItems);
 }
@@ -756,11 +750,12 @@ async function shareWall() {
     return;
   }
 
-  const shareUrl = `${location.origin}${location.pathname}?user=${encodeURIComponent(username)}`;
+  // ✅ REDDIT-SAFE: do NOT include ?user= in the shared link
+  const shareUrl = `${location.origin}${location.pathname}`;
 
   const shareData = {
     title: "My VinylWall",
-    text: `Drop the needle on my Discogs wall (${username}).`,
+    text: `Drop the needle on my Discogs wall.`,
     url: shareUrl,
   };
 
@@ -894,6 +889,62 @@ function needleDropSound() {
   } catch {}
 }
 
+// -------------------- DOWNLOAD AS IMAGE --------------------
+async function downloadCollectionImage() {
+  const downloadBtn = els.downloadImage;
+  if (!downloadBtn) return;
+
+  const grid = els.grid;
+  if (!grid || !allItems.length) {
+    alert("Load a collection first!");
+    return;
+  }
+
+  const originalText = downloadBtn.textContent;
+  downloadBtn.textContent = "Creating image...";
+  downloadBtn.disabled = true;
+
+  try {
+    // Hide badges for a clean image
+    const badges = grid.querySelectorAll(".badge");
+    badges.forEach((b) => (b.style.display = "none"));
+
+    await new Promise((r) => setTimeout(r, 80));
+
+    // eslint-disable-next-line no-undef
+    const canvas = await html2canvas(grid, {
+      backgroundColor: "#0b0b0e",
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+    });
+
+    badges.forEach((b) => (b.style.display = ""));
+
+    canvas.toBlob((blob) => {
+      if (!blob) throw new Error("Failed to create image blob.");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      const username = (els.username?.value || "collection").trim() || "collection";
+      link.download = `vinylwall-${username}-${Date.now()}.png`;
+      link.href = url;
+      link.click();
+
+      URL.revokeObjectURL(url);
+
+      downloadBtn.textContent = originalText;
+      downloadBtn.disabled = false;
+    });
+  } catch (error) {
+    console.error("Download failed:", error);
+    alert("Failed to create image. Try again!");
+    downloadBtn.textContent = originalText;
+    downloadBtn.disabled = false;
+  }
+}
+
 // -------------------- LOAD USER --------------------
 async function loadUser(username) {
   if (!username) return;
@@ -905,7 +956,6 @@ async function loadUser(username) {
     applyFilters();
     needleDropSound();
 
-    // ✅ Stats even on cached loads
     renderStatsOverlay(username, viewItems.length ? viewItems : allItems);
     return;
   }
@@ -920,7 +970,6 @@ async function loadUser(username) {
     applyFilters();
     needleDropSound();
 
-    // ✅ Stats after fresh load
     renderStatsOverlay(username, viewItems.length ? viewItems : allItems);
   } finally {
     setLoading(false);
@@ -932,17 +981,26 @@ function init() {
   if (els.tokenHint) els.tokenHint.textContent = "";
   if (els.setToken) els.setToken.style.display = "none";
 
-  // ✅ Make sure stats UI can show immediately for return visitors
+  // Return visitors: show saved stats
   hydrateStatsFromStorage();
 
   if (els.shareWall) els.shareWall.addEventListener("click", shareWall);
 
+  // ✅ Collage toggle = Privacy toggle
   if (els.viewMode) {
     els.viewMode.addEventListener("click", () => {
       collageOn = !collageOn;
+
+      // Privacy mode ON during collage
+      document.body.classList.toggle("privacy-mode", collageOn);
+
       els.viewMode.textContent = collageOn ? "Grid" : "Collage";
       if (allItems.length) applyFilters();
     });
+  }
+
+  if (els.downloadImage) {
+    els.downloadImage.addEventListener("click", downloadCollectionImage);
   }
 
   const drinkLink = document.getElementById("drinkLink");
@@ -962,7 +1020,11 @@ function init() {
     els.go.addEventListener("click", async () => {
       const username = (els.username?.value || "").trim();
       if (!username) return;
+
+      // You can keep this for YOUR personal convenience.
+      // Reddit-safe sharing already removes it from copied links.
       setUserInUrl(username);
+
       try {
         await loadUser(username);
       } catch (e) {
